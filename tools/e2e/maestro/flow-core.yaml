@@ -1,0 +1,76 @@
+appId: ${APP_ID}
+name: Core Navigation Flow
+---
+- clearState
+- launchApp
+
+- tapOn:
+    id: "auth.demo"
+
+- extendedWaitUntil:
+    visible:
+      id: "nav.home"
+    timeout: 10000
+
+- assertVisible:
+    id: "nav.home"
+    label: "Home tab is active"
+
+- tapOn:
+    id: "nav.jobs"
+- assertVisible:
+    id: "nav.jobs"
+    label: "Jobs tab navigated"
+
+- tapOn:
+    id: "nav.messages"
+- assertVisible:
+    id: "nav.messages"
+    label: "Messages tab navigated"
+
+- tapOn:
+    id: "nav.account"
+- assertVisible:
+    id: "nav.account"
+    label: "Account tab navigated"
+
+- scrollUntilVisible:
+    element:
+      text: "Privacy Policy"
+    direction: DOWN
+    timeout: 5000
+
+- tapOn:
+    text: "Privacy Policy"
+
+- assertVisible:
+    text: "Privacy Policy"
+    label: "Privacy Policy screen loaded"
+
+- back
+
+- extendedWaitUntil:
+    visible:
+      id: "nav.account"
+    timeout: 5000
+
+- scrollUntilVisible:
+    element:
+      id: "settings.logout"
+    direction: DOWN
+    timeout: 5000
+
+- tapOn:
+    id: "settings.logout"
+
+- tapOn:
+    text: "Sign Out"
+
+- extendedWaitUntil:
+    visible:
+      id: "auth.email"
+    timeout: 10000
+
+- assertVisible:
+    id: "auth.email"
+    label: "Returned to login screen after logout"

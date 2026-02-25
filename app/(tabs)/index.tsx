@@ -49,9 +49,9 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadJobs = useCallback(async () => {
-    const jobs = await StorageService.getOpenJobs(user?.id);
+    const jobs = await StorageService.getOpenJobs(user?.id, user?.blockedUsers);
     setOpenJobs(jobs.slice(0, 10));
-  }, [user?.id]);
+  }, [user?.id, user?.blockedUsers]);
 
   useEffect(() => { loadJobs(); }, [loadJobs]);
 

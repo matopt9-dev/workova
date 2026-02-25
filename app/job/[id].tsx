@@ -72,7 +72,7 @@ function OfferCard({ offer, isOwner, onAccept, onReject }: { offer: Offer; isOwn
 
 export default function JobDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [job, setJob] = useState<Job | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -174,11 +174,53 @@ export default function JobDetailScreen() {
             createdAt: new Date().toISOString(),
           };
           await StorageService.createReport(report);
-          Alert.alert("Report Submitted", "Thank you for your report. We will review this content.");
+          Alert.alert(
+            "Report Submitted",
+            "Thank you for your report. We will review this content within 24 hours. Would you also like to block this user?",
+            [
+              {
+                text: "Block User",
+                style: "destructive",
+                onPress: () => handleBlockUser(),
+              },
+              { text: "No Thanks", style: "cancel" },
+            ]
+          );
         },
       })),
       { text: "Cancel", style: "cancel" },
     ]);
+  }
+
+  async function handleBlockUser() {
+    if (!user || !job) return;
+    Alert.alert(
+      "Block User",
+      `Block ${job.customerName}? Their jobs and content will be hidden from your feed. You can unblock them from your account settings.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            const updated = await StorageService.blockUser(user.id, job.customerId);
+            const report: Report = {
+              id: Crypto.randomUUID(),
+              reporterId: user.id,
+              targetType: "user" as const,
+              targetId: job.customerId,
+              reason: "Blocked by user",
+              createdAt: new Date().toISOString(),
+            };
+            await StorageService.createReport(report);
+            await refreshUser();
+            Alert.alert("User Blocked", `${job.customerName} has been blocked. Their content has been removed from your feed.`);
+            router.back();
+          },
+        },
+      ]
+    );
   }
 
   if (!job) {
@@ -212,9 +254,14 @@ export default function JobDetailScreen() {
             <Ionicons name="trash-outline" size={22} color={theme.colors.error} />
           </Pressable>
         ) : user && !isOwner ? (
-          <Pressable onPress={handleReport} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
-            <Ionicons name="flag-outline" size={22} color={theme.colors.subtext} />
-          </Pressable>
+          <View style={{ flexDirection: "row", gap: 16 }}>
+            <Pressable onPress={handleBlockUser} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })} testID="job.block">
+              <Ionicons name="ban-outline" size={22} color={theme.colors.subtext} />
+            </Pressable>
+            <Pressable onPress={handleReport} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })} testID="job.report">
+              <Ionicons name="flag-outline" size={22} color={theme.colors.subtext} />
+            </Pressable>
+          </View>
         ) : (
           <View style={{ width: 24 }} />
         )}

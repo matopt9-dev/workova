@@ -73,7 +73,7 @@ export default function JobsScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
-    const browse = await StorageService.getOpenJobs(user?.id);
+    const browse = await StorageService.getOpenJobs(user?.id, user?.blockedUsers);
     setBrowseJobs(browse);
 
     if (user) {

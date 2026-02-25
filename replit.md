@@ -74,13 +74,19 @@ constants/
 - Clean, minimal marketplace aesthetic inspired by TaskRabbit/Thumbtack
 
 ## App Store Compliance
-- Guest mode: Home and Jobs (Browse tab) accessible without login
-- Account deletion: Full data removal (user, jobs, offers, chats, messages, worker profile)
-- Demo account: "Try Demo Account" on login screen seeds sample data
-- Content moderation: Keyword filter on job/offer text fields
-- Report system: Flag icon on job details for reporting (Spam, Inappropriate, Fraud, Other)
+- Guest mode: Home and Jobs (Browse tab) accessible without login (Guideline 5.1.1)
+- Account deletion: Full data removal (user, jobs, offers, chats, messages, worker profile) (Guideline 5.1.1(v))
+- Demo account: "Try Demo Account" on login screen seeds sample data (Guideline 2.1)
+- Content moderation: Keyword filter on job/offer text fields (Guideline 1.2)
+- Report system: Flag icon on job details for reporting (Spam, Inappropriate, Fraud, Other) (Guideline 1.2)
+- Block user: Ban icon on job detail header and chat header; blocks user and removes their content from feed instantly (Guideline 1.2)
+- Blocked users management: Unblock users from Account > Blocked Users section
+- EULA checkbox: Register screen requires explicit agreement to Terms, Privacy Policy, Community Guidelines with "zero tolerance" language (Guideline 1.2)
+- Zero tolerance policy: Community Guidelines and Terms of Service include explicit zero-tolerance for objectionable content
+- 24-hour moderation commitment: Reports reviewed within 24 hours, offending users ejected
 - Community Guidelines: Accessible from Account settings
 - Legal pages: Privacy Policy, Terms of Service, Help & Support
+- WeatherKit: App does NOT use WeatherKit (note for App Store Connect review notes)
 
 ## Release Readiness System
 
@@ -149,3 +155,4 @@ evidence/                    - Auto-generated evidence output
 - 2026-02-21: Created Privacy Policy, Terms of Service, Help & Support pages
 - 2026-02-24: App Store compliance: guest mode, account deletion, demo account, content moderation, report system, community guidelines
 - 2026-02-24: Submission Readiness System: CI/CD scripts, evidence generation, Maestro E2E flows, screenshot tooling, GitHub Actions workflows, health/version API endpoints, testID props
+- 2026-02-25: Apple Build 2 rejection fixes: EULA checkbox on register, block user UI (job detail + chat), blocked user content filtering, unblock in account settings, zero-tolerance language in Terms/Guidelines, 24-hour moderation commitment, report-then-block flow

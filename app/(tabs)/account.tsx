@@ -33,15 +33,26 @@ function SettingsRow({ icon, label, value, onPress }: { icon: string; label: str
 }
 
 export default function AccountScreen() {
-  const { user, signOut, updateRole } = useAuth();
+  const { user, signOut, updateRole, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [workerProfile, setWorkerProfile] = useState<WorkerProfile | null>(null);
+  const [blockedNames, setBlockedNames] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (user) {
       StorageService.getWorkerProfile(user.id).then(setWorkerProfile);
+      if (user.blockedUsers.length > 0) {
+        (async () => {
+          const names: Record<string, string> = {};
+          for (const id of user.blockedUsers) {
+            const u = await StorageService.getUserById(id);
+            names[id] = u?.displayName || "Unknown User";
+          }
+          setBlockedNames(names);
+        })();
+      }
     }
-  }, [user?.id]);
+  }, [user?.id, user?.blockedUsers]);
 
   const webTopInset = Platform.OS === "web" ? 67 : 0;
   const webBottomInset = Platform.OS === "web" ? 34 : 0;
@@ -181,6 +192,46 @@ export default function AccountScreen() {
                 </View>
               </Pressable>
             )}
+          </Card>
+        </View>
+      )}
+
+      {user.blockedUsers.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Blocked Users</Text>
+          <Card noPadding>
+            {user.blockedUsers.map((blockedId) => (
+              <Pressable
+                key={blockedId}
+                onPress={() => {
+                  Alert.alert(
+                    "Unblock User",
+                    `Unblock ${blockedNames[blockedId] || "this user"}? Their content will appear in your feed again.`,
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Unblock",
+                        onPress: async () => {
+                          await StorageService.unblockUser(user.id, blockedId);
+                          await refreshUser();
+                        },
+                      },
+                    ]
+                  );
+                }}
+                style={({ pressed }) => [styles.settingsRow, { opacity: pressed ? 0.7 : 1 }]}
+              >
+                <View style={styles.settingsRowLeft}>
+                  <View style={[styles.settingsIconWrap, { backgroundColor: theme.colors.errorLight }]}>
+                    <Ionicons name="ban-outline" size={18} color={theme.colors.error} />
+                  </View>
+                  <Text style={styles.settingsLabel}>{blockedNames[blockedId] || blockedId}</Text>
+                </View>
+                <View style={styles.settingsRowRight}>
+                  <Text style={[styles.settingsValue, { color: theme.colors.primary }]}>Unblock</Text>
+                </View>
+              </Pressable>
+            ))}
           </Card>
         </View>
       )}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, Alert } from "react-native";
-import { router } from "expo-router";
+import { router, Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
@@ -17,11 +17,13 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   async function handleSignUp() {
     if (!displayName.trim()) return Alert.alert("Missing Name", "Please enter your name.");
     if (!email.trim()) return Alert.alert("Missing Email", "Please enter your email.");
     if (password.length < 6) return Alert.alert("Weak Password", "Password must be at least 6 characters.");
+    if (!agreedToTerms) return Alert.alert("Terms Required", "You must agree to the Terms of Service and Community Guidelines before creating an account.");
     setLoading(true);
     try {
       await signUp(email, password, displayName);
@@ -89,12 +91,42 @@ export default function RegisterScreen() {
           </Pressable>
         </View>
 
-        <PrimaryButton title="Create Account" onPress={handleSignUp} loading={loading} disabled={loading} />
-      </View>
+        <Pressable
+          onPress={() => setAgreedToTerms(!agreedToTerms)}
+          style={styles.checkboxRow}
+          testID="register.terms"
+        >
+          <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+            {agreedToTerms && <Ionicons name="checkmark" size={14} color="#fff" />}
+          </View>
+          <Text style={styles.checkboxLabel}>
+            I agree to Workova's{" "}
+            <Text
+              style={styles.checkboxLink}
+              onPress={() => router.push("/terms-of-service")}
+            >
+              Terms of Service
+            </Text>
+            ,{" "}
+            <Text
+              style={styles.checkboxLink}
+              onPress={() => router.push("/privacy-policy")}
+            >
+              Privacy Policy
+            </Text>
+            , and{" "}
+            <Text
+              style={styles.checkboxLink}
+              onPress={() => router.push("/community-guidelines")}
+            >
+              Community Guidelines
+            </Text>
+            . I understand there is zero tolerance for objectionable content or abusive behavior.
+          </Text>
+        </Pressable>
 
-      <Text style={styles.disclaimer}>
-        By signing up, you agree to Workova's Terms of Service and Privacy Policy.
-      </Text>
+        <PrimaryButton title="Create Account" onPress={handleSignUp} loading={loading} disabled={loading || !agreedToTerms} />
+      </View>
 
       <TrustBadgesRow variant="auth" />
     </KeyboardAwareScrollViewCompat>
@@ -132,12 +164,35 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     color: theme.colors.text,
   },
-  disclaimer: {
-    fontSize: 12,
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+    paddingVertical: 4,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: theme.colors.muted,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
+  },
+  checkboxLabel: {
+    flex: 1,
+    fontSize: 13,
     fontFamily: theme.fonts.regular,
-    color: theme.colors.muted,
-    textAlign: "center",
-    marginTop: 24,
-    lineHeight: 18,
+    color: theme.colors.subtext,
+    lineHeight: 19,
+  },
+  checkboxLink: {
+    color: theme.colors.primary,
+    fontFamily: theme.fonts.semibold,
   },
 });

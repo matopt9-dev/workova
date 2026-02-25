@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { View, Text, StyleSheet, FlatList, TextInput, Pressable, Platform } from "react-native";
+import { View, Text, StyleSheet, FlatList, TextInput, Pressable, Platform, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import * as Crypto from "expo-crypto";
@@ -7,7 +7,7 @@ import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { useAuth } from "@/contexts/AuthContext";
-import { StorageService, Chat, Message } from "@/lib/storage";
+import { StorageService, Chat, Message, Report } from "@/lib/storage";
 import { theme } from "@/components/ui/theme";
 
 function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean }) {
@@ -25,7 +25,7 @@ function MessageBubble({ message, isOwn }: { message: Message; isOwn: boolean })
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   const inputRef = useRef<TextInput>(null);
   const [chat, setChat] = useState<Chat | null>(null);
@@ -70,6 +70,37 @@ export default function ChatScreen() {
   const otherMemberId = chat ? chat.members.find((m) => m !== user?.id) || "" : "";
   const otherName = chat ? chat.memberNames[otherMemberId] || "Chat" : "Chat";
 
+  async function handleBlockUser() {
+    if (!user || !otherMemberId) return;
+    Alert.alert(
+      "Block User",
+      `Block ${otherName}? Their jobs and content will be hidden from your feed and you will no longer be able to message them.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Block",
+          style: "destructive",
+          onPress: async () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            await StorageService.blockUser(user.id, otherMemberId);
+            const report: Report = {
+              id: Crypto.randomUUID(),
+              reporterId: user.id,
+              targetType: "user" as const,
+              targetId: otherMemberId,
+              reason: "Blocked by user",
+              createdAt: new Date().toISOString(),
+            };
+            await StorageService.createReport(report);
+            await refreshUser();
+            Alert.alert("User Blocked", `${otherName} has been blocked. Their content has been removed from your feed.`);
+            router.back();
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <KeyboardAvoidingView style={styles.container} behavior="padding" keyboardVerticalOffset={0}>
       <View style={[styles.header, { paddingTop: (Platform.OS !== "web" ? insets.top : 0) + webTopInset + 8 }]}>
@@ -80,7 +111,9 @@ export default function ChatScreen() {
           <Text style={styles.headerName}>{otherName}</Text>
           {chat && <Text style={styles.headerJob}>{chat.jobTitle}</Text>}
         </View>
-        <View style={{ width: 24 }} />
+        <Pressable onPress={handleBlockUser} hitSlop={8} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })} testID="chat.block">
+          <Ionicons name="ban-outline" size={22} color={theme.colors.subtext} />
+        </Pressable>
       </View>
 
       <FlatList

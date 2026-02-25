@@ -1,459 +1,528 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
-    <title>APP_NAME_PLACEHOLDER</title>
+    <title>Workova — Find Trusted Local Pros</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Workova connects you with trusted local service professionals. Post a job, get offers, and hire — all in one app." />
+    <meta property="og:title" content="Workova — Find Trusted Local Pros" />
+    <meta property="og:description" content="Post a job, get offers, and hire trusted local professionals. Download Workova today." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://workova.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
     <style>
-      * {
-        box-sizing: border-box;
-      }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        margin: 0;
-        padding: 32px 20px;
-        text-align: center;
+        font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: #1a1a2e;
         background: #fff;
-        color: #222;
-        line-height: 1.5;
-        min-height: 100vh;
-      }
-      .wrapper {
-        max-width: 480px;
-        margin: 0 auto;
-      }
-      h1 {
-        font-size: 26px;
-        font-weight: 600;
-        margin: 0;
-        color: #111;
-      }
-      .subtitle {
-        font-size: 15px;
-        color: #666;
-        margin-top: 8px;
-        margin-bottom: 32px;
-      }
-      .loading {
-        display: none;
-        margin: 60px 0;
-      }
-      .spinner {
-        border: 2px solid #ddd;
-        border-top-color: #333;
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        animation: spin 0.8s linear infinite;
-        margin: 20px auto;
-      }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      .loading-text {
-        font-size: 16px;
-        color: #444;
-      }
-      .content {
-        display: block;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
       }
 
-      .steps-container {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
+      /* NAV */
+      .nav {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+        background: rgba(255,255,255,0.92);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(0,0,0,0.06);
       }
+      .nav-inner {
+        max-width: 1120px; margin: 0 auto;
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 16px 24px;
+      }
+      .logo {
+        font-size: 22px; font-weight: 700; color: #0D9488;
+        text-decoration: none; letter-spacing: -0.5px;
+      }
+      .logo span { color: #1a1a2e; }
+      .nav-links { display: flex; gap: 32px; align-items: center; }
+      .nav-links a {
+        font-size: 14px; font-weight: 500; color: #555;
+        text-decoration: none; transition: color 0.2s;
+      }
+      .nav-links a:hover { color: #0D9488; }
+      .nav-cta {
+        background: #0D9488 !important; color: #fff !important;
+        padding: 10px 22px !important; border-radius: 12px;
+        font-weight: 600 !important; font-size: 14px !important;
+        transition: background 0.2s !important;
+      }
+      .nav-cta:hover { background: #0b7f74 !important; }
 
-      .step {
-        padding: 24px;
-        border: 1px solid #ddd;
-        border-radius: 12px;
+      /* HERO */
+      .hero {
+        padding: 140px 24px 80px;
         text-align: center;
-        background: #fafafa;
+        background: linear-gradient(168deg, #f0fdfa 0%, #fff 50%, #fffbeb 100%);
+        position: relative; overflow: hidden;
       }
-      .step-header {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        margin-bottom: 12px;
+      .hero::before {
+        content: ''; position: absolute; top: -200px; right: -200px;
+        width: 500px; height: 500px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(13,148,136,0.08), transparent 70%);
       }
+      .hero::after {
+        content: ''; position: absolute; bottom: -150px; left: -150px;
+        width: 400px; height: 400px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(245,158,11,0.06), transparent 70%);
+      }
+      .hero-inner { max-width: 720px; margin: 0 auto; position: relative; z-index: 1; }
+      .hero-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(13,148,136,0.1); color: #0D9488;
+        padding: 6px 16px; border-radius: 100px;
+        font-size: 13px; font-weight: 600; margin-bottom: 24px;
+      }
+      .hero h1 {
+        font-size: clamp(36px, 6vw, 56px);
+        font-weight: 700; line-height: 1.12;
+        color: #1a1a2e; letter-spacing: -1.5px; margin-bottom: 20px;
+      }
+      .hero h1 em {
+        font-style: normal;
+        background: linear-gradient(135deg, #0D9488, #14b8a6);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      .hero p {
+        font-size: 18px; color: #666; max-width: 520px;
+        margin: 0 auto 36px; line-height: 1.7;
+      }
+      .hero-buttons { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+      .btn-primary {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: #0D9488; color: #fff;
+        padding: 14px 32px; border-radius: 14px;
+        font-size: 16px; font-weight: 600; text-decoration: none;
+        transition: all 0.2s; border: none; cursor: pointer;
+        box-shadow: 0 4px 14px rgba(13,148,136,0.3);
+      }
+      .btn-primary:hover { background: #0b7f74; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(13,148,136,0.35); }
+      .btn-secondary {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: #fff; color: #1a1a2e;
+        padding: 14px 32px; border-radius: 14px;
+        font-size: 16px; font-weight: 600; text-decoration: none;
+        transition: all 0.2s; border: 1.5px solid #e0e0e0;
+      }
+      .btn-secondary:hover { border-color: #0D9488; color: #0D9488; }
+      .hero-trust {
+        margin-top: 48px; display: flex; align-items: center;
+        justify-content: center; gap: 32px; flex-wrap: wrap;
+      }
+      .hero-trust-item {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 13px; color: #888; font-weight: 500;
+      }
+      .hero-trust-item svg { width: 16px; height: 16px; color: #0D9488; }
+
+      /* SECTIONS */
+      section { padding: 80px 24px; }
+      .section-inner { max-width: 1120px; margin: 0 auto; }
+      .section-label {
+        font-size: 13px; font-weight: 700; color: #0D9488;
+        text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 12px;
+      }
+      .section-title {
+        font-size: clamp(28px, 4vw, 40px);
+        font-weight: 700; color: #1a1a2e; letter-spacing: -0.8px;
+        margin-bottom: 16px; line-height: 1.2;
+      }
+      .section-subtitle {
+        font-size: 17px; color: #777; max-width: 560px; margin-bottom: 48px;
+      }
+
+      /* HOW IT WORKS */
+      .how-it-works { background: #fafbfc; }
+      .steps-grid {
+        display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px;
+      }
+      .step-card {
+        background: #fff; border-radius: 20px; padding: 36px 28px;
+        border: 1px solid #f0f0f0;
+        transition: all 0.3s;
+      }
+      .step-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.06); transform: translateY(-4px); }
       .step-number {
-        width: 28px;
-        height: 28px;
-        border: 1px solid #999;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-        font-size: 14px;
-        flex-shrink: 0;
-        color: #555;
+        width: 44px; height: 44px; border-radius: 14px;
+        background: linear-gradient(135deg, #0D9488, #14b8a6);
+        color: #fff; display: flex; align-items: center; justify-content: center;
+        font-size: 18px; font-weight: 700; margin-bottom: 20px;
       }
-      .step-title {
-        font-size: 18px;
-        font-weight: 600;
-        margin: 0;
-        color: #222;
+      .step-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 10px; color: #1a1a2e; }
+      .step-card p { font-size: 15px; color: #777; line-height: 1.6; }
+
+      /* CATEGORIES */
+      .categories-grid {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;
       }
-      .step-description {
-        font-size: 14px;
+      .category-tile {
+        background: #f7f8fa; border-radius: 16px; padding: 24px 16px;
+        text-align: center; transition: all 0.2s; border: 1px solid transparent;
+      }
+      .category-tile:hover { background: #f0fdfa; border-color: #ccfbf1; }
+      .category-icon {
+        font-size: 32px; margin-bottom: 10px; display: block;
+      }
+      .category-tile span {
+        font-size: 14px; font-weight: 600; color: #444;
+      }
+
+      /* FOR WORKERS */
+      .for-workers { background: #1a1a2e; color: #fff; }
+      .for-workers .section-label { color: #F59E0B; }
+      .for-workers .section-title { color: #fff; }
+      .for-workers .section-subtitle { color: rgba(255,255,255,0.6); }
+      .worker-features {
+        display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px;
+      }
+      .worker-feature {
+        background: rgba(255,255,255,0.06); border-radius: 18px;
+        padding: 28px 24px; border: 1px solid rgba(255,255,255,0.08);
+        transition: all 0.2s;
+      }
+      .worker-feature:hover { background: rgba(255,255,255,0.1); }
+      .worker-feature-icon {
+        width: 40px; height: 40px; border-radius: 12px;
+        background: rgba(245,158,11,0.15); color: #F59E0B;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; margin-bottom: 14px;
+      }
+      .worker-feature h4 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+      .worker-feature p { font-size: 14px; color: rgba(255,255,255,0.55); line-height: 1.6; }
+
+      /* TRUST */
+      .trust-grid {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;
+        text-align: center;
+      }
+      .trust-item { padding: 24px 16px; }
+      .trust-icon {
+        width: 48px; height: 48px; border-radius: 14px;
+        background: #f0fdfa; color: #0D9488;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 22px; margin: 0 auto 14px;
+      }
+      .trust-item h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; color: #1a1a2e; }
+      .trust-item p { font-size: 13px; color: #888; line-height: 1.5; }
+
+      /* CTA */
+      .cta-section {
+        background: linear-gradient(135deg, #0D9488, #0b7f74);
+        text-align: center; border-radius: 0;
+      }
+      .cta-section .section-inner { max-width: 640px; }
+      .cta-section h2 {
+        font-size: clamp(28px, 4vw, 38px);
+        font-weight: 700; color: #fff; letter-spacing: -0.8px;
         margin-bottom: 16px;
-        color: #666;
+      }
+      .cta-section p { font-size: 17px; color: rgba(255,255,255,0.8); margin-bottom: 32px; }
+      .btn-white {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: #fff; color: #0D9488;
+        padding: 14px 32px; border-radius: 14px;
+        font-size: 16px; font-weight: 700; text-decoration: none;
+        transition: all 0.2s;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+      }
+      .btn-white:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
+
+      /* FOOTER */
+      .footer {
+        background: #f7f8fa; padding: 48px 24px 32px;
+        border-top: 1px solid #eee;
+      }
+      .footer-inner {
+        max-width: 1120px; margin: 0 auto;
+        display: flex; justify-content: space-between; align-items: flex-start;
+        flex-wrap: wrap; gap: 32px;
+      }
+      .footer-brand { max-width: 280px; }
+      .footer-brand .logo { font-size: 20px; display: block; margin-bottom: 12px; }
+      .footer-brand p { font-size: 13px; color: #888; line-height: 1.6; }
+      .footer-links { display: flex; gap: 48px; }
+      .footer-col h5 { font-size: 13px; font-weight: 700; color: #444; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+      .footer-col a {
+        display: block; font-size: 14px; color: #777;
+        text-decoration: none; margin-bottom: 8px; transition: color 0.2s;
+      }
+      .footer-col a:hover { color: #0D9488; }
+      .footer-bottom {
+        max-width: 1120px; margin: 32px auto 0;
+        padding-top: 24px; border-top: 1px solid #e8e8e8;
+        display: flex; justify-content: space-between; align-items: center;
+        font-size: 13px; color: #aaa;
       }
 
-      .store-buttons {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        justify-content: center;
-        flex-wrap: wrap;
-      }
-      .store-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 12px 20px;
-        font-size: 14px;
-        font-weight: 500;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        text-decoration: none;
-        color: #333;
-        background: #fff;
-        transition: all 0.15s;
-      }
-      .store-button:hover {
-        background: #f5f5f5;
-        border-color: #999;
-      }
-      .store-link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        padding: 8px 0;
-        font-size: 13px;
-        font-weight: 400;
-        text-decoration: underline;
-        text-underline-offset: 2px;
-        color: #666;
-        background: none;
-        border: none;
-        transition: color 0.15s;
-      }
-      .store-link:hover {
-        color: #333;
-      }
-      .store-link .store-icon {
-        width: 14px;
-        height: 14px;
-      }
-      .store-icon {
-        width: 18px;
-        height: 18px;
+      /* MOBILE */
+      @media (max-width: 768px) {
+        .nav-links { display: none; }
+        .hero { padding: 120px 20px 60px; }
+        .hero-buttons { flex-direction: column; align-items: center; }
+        .hero-trust { flex-direction: column; gap: 16px; }
+        section { padding: 60px 20px; }
+        .steps-grid { grid-template-columns: 1fr; }
+        .categories-grid { grid-template-columns: repeat(2, 1fr); }
+        .worker-features { grid-template-columns: 1fr; }
+        .trust-grid { grid-template-columns: repeat(2, 1fr); }
+        .footer-inner { flex-direction: column; }
+        .footer-links { gap: 32px; }
+        .footer-bottom { flex-direction: column; gap: 8px; text-align: center; }
       }
 
-      .qr-section {
-        background: #333;
-        color: #fff;
-        border-color: #333;
-      }
-      .qr-section .step-number {
-        border-color: rgba(255, 255, 255, 0.5);
-        color: #fff;
-      }
-      .qr-section .step-title {
-        color: #fff;
-      }
-      .qr-section .step-description {
-        color: rgba(255, 255, 255, 0.7);
-      }
-      .qr-code {
-        width: 180px;
-        height: 180px;
-        margin: 0 auto 16px;
-        background: #fff;
-        border-radius: 8px;
-        padding: 12px;
-      }
-      .qr-code canvas {
-        width: 100%;
-        height: 100%;
-      }
-      .open-button {
-        display: inline-block;
-        padding: 12px 24px;
-        font-size: 14px;
-        font-weight: 500;
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        border-radius: 8px;
-        text-decoration: none;
-        color: #333;
-        background: #fff;
-        transition: opacity 0.15s;
-      }
-      .open-button:hover {
-        opacity: 0.9;
-      }
-
-      /* Desktop styles */
-      @media (min-width: 768px) {
-        body {
-          padding: 48px 32px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .wrapper {
-          max-width: 720px;
-        }
-        h1 {
-          font-size: 32px;
-          margin-bottom: 10px;
-        }
-        .subtitle {
-          font-size: 16px;
-          margin-bottom: 40px;
-        }
-        .steps-container {
-          flex-direction: row;
-          gap: 20px;
-          align-items: stretch;
-        }
-        .step {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          padding: 28px;
-        }
-        .step-description {
-          flex-grow: 1;
-        }
-        .store-buttons {
-          flex-direction: column;
-          gap: 10px;
-        }
-        .qr-code {
-          width: 200px;
-          height: 200px;
-        }
-      }
-
-      /* Large desktop */
-      @media (min-width: 1024px) {
-        .wrapper {
-          max-width: 800px;
-        }
-        h1 {
-          font-size: 36px;
-        }
-        .steps-container {
-          gap: 28px;
-        }
-        .step {
-          padding: 32px;
-        }
-      }
-
-      /* Dark mode */
+      /* DARK MODE */
       @media (prefers-color-scheme: dark) {
-        body {
-          background: #0d0d0d;
-          color: #e0e0e0;
-        }
-        h1 {
-          color: #f5f5f5;
-        }
-        .subtitle {
-          color: #999;
-        }
-        .spinner {
-          border-color: #444;
-          border-top-color: #ccc;
-        }
-        .loading-text {
-          color: #aaa;
-        }
-        .step {
-          border-color: #333;
-          background: #1a1a1a;
-        }
-        .step-number {
-          border-color: #666;
-          color: #bbb;
-        }
-        .step-title {
-          color: #f0f0f0;
-        }
-        .step-description {
-          color: #888;
-        }
-        .store-button {
-          border-color: #444;
-          color: #e0e0e0;
-          background: #222;
-        }
-        .store-button:hover {
-          background: #2a2a2a;
-          border-color: #666;
-        }
-        .store-link {
-          color: #888;
-        }
-        .store-link:hover {
-          color: #ccc;
-        }
-        .qr-section {
-          background: #111;
-          border-color: #333;
-        }
-        .qr-section .step-number {
-          border-color: rgba(255, 255, 255, 0.4);
-        }
-        .qr-section .step-description {
-          color: rgba(255, 255, 255, 0.6);
-        }
-        .open-button {
-          background: #f0f0f0;
-          color: #111;
-        }
-        .open-button:hover {
-          background: #e0e0e0;
-        }
+        body { background: #0d0d0d; color: #e0e0e0; }
+        .nav { background: rgba(13,13,13,0.92); border-bottom-color: rgba(255,255,255,0.06); }
+        .logo span { color: #e0e0e0; }
+        .nav-links a { color: #999; }
+        .hero { background: linear-gradient(168deg, #0d1f1c 0%, #0d0d0d 50%, #1a1608 100%); }
+        .hero h1 { color: #f0f0f0; }
+        .hero p { color: #999; }
+        .btn-secondary { background: #1a1a1a; color: #e0e0e0; border-color: #333; }
+        .btn-secondary:hover { border-color: #0D9488; color: #14b8a6; }
+        .how-it-works { background: #111; }
+        .step-card { background: #1a1a1a; border-color: #222; }
+        .step-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+        .step-card h3 { color: #e0e0e0; }
+        .step-card p { color: #888; }
+        .category-tile { background: #1a1a1a; }
+        .category-tile:hover { background: #1a2e2b; border-color: #1a3a35; }
+        .category-tile span { color: #ccc; }
+        .section-title { color: #e0e0e0; }
+        .section-subtitle { color: #888; }
+        .trust-icon { background: #1a2e2b; }
+        .trust-item h4 { color: #e0e0e0; }
+        .trust-item p { color: #777; }
+        .footer { background: #111; border-top-color: #222; }
+        .footer-brand p { color: #666; }
+        .footer-col h5 { color: #bbb; }
+        .footer-col a { color: #777; }
+        .footer-bottom { border-top-color: #222; color: #555; }
       }
     </style>
   </head>
   <body>
-    <div class="wrapper">
-      <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <div class="loading-text">Opening in Expo Go...</div>
+
+    <!-- NAV -->
+    <nav class="nav">
+      <div class="nav-inner">
+        <a href="/" class="logo">Worko<span>va</span></a>
+        <div class="nav-links">
+          <a href="#how-it-works">How It Works</a>
+          <a href="#categories">Services</a>
+          <a href="#for-workers">For Pros</a>
+          <a href="#trust">Trust & Safety</a>
+          <a href="#download" class="nav-cta">Get the App</a>
+        </div>
       </div>
+    </nav>
 
-      <div class="content" id="content">
-        <h1>APP_NAME_PLACEHOLDER</h1>
-        <p class="subtitle">Preview this app on your phone</p>
-
-        <div class="steps-container">
-          <div class="step">
-            <div class="step-header">
-              <div class="step-number">1</div>
-              <h2 class="step-title">Download Expo Go</h2>
-            </div>
-            <p class="step-description">
-              Expo Go is a free app to test mobile apps
-            </p>
-            <div class="store-buttons" id="store-buttons">
-              <a
-                id="app-store-btn"
-                href="https://apps.apple.com/app/id982107779"
-                class="store-button"
-                target="_blank"
-              >
-                <svg class="store-icon" viewBox="0 0 24 24" fill="currentColor">
-                  <path
-                    d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"
-                  />
-                </svg>
-                App Store
-              </a>
-              <a
-                id="play-store-btn"
-                href="https://play.google.com/store/apps/details?id=host.exp.exponent"
-                class="store-button"
-                target="_blank"
-              >
-                <svg class="store-icon" viewBox="0 0 24 24" fill="currentColor">
-                  <path
-                    d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"
-                  />
-                </svg>
-                Google Play
-              </a>
-            </div>
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-inner">
+        <div class="hero-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/></svg>
+          Now available on iOS & Android
+        </div>
+        <h1>Get things done with <em>trusted local pros</em></h1>
+        <p>Post a job, compare offers from vetted professionals, and hire with confidence. From home repairs to personal services — Workova has you covered.</p>
+        <div class="hero-buttons">
+          <a href="#download" class="btn-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Free
+          </a>
+          <a href="#for-workers" class="btn-secondary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Join as a Pro
+          </a>
+        </div>
+        <div class="hero-trust">
+          <div class="hero-trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Verified Providers
           </div>
-
-          <div class="step qr-section">
-            <div class="step-header">
-              <div class="step-number">2</div>
-              <h2 class="step-title">Scan QR Code</h2>
-            </div>
-            <p class="step-description">Use your phone's camera or Expo Go</p>
-            <div class="qr-code" id="qr-code"></div>
-            <a href="exps://EXPS_URL_PLACEHOLDER" class="open-button"
-              >Open in Expo Go</a
-            >
+          <div class="hero-trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Free to Post
+          </div>
+          <div class="hero-trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            In-App Messaging
           </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <script src="https://unpkg.com/qr-code-styling@1.6.0/lib/qr-code-styling.js"></script>
-    <script>
-      (function () {
-        const ua = navigator.userAgent;
-        const loadingEl = document.getElementById("loading");
-        const contentEl = document.getElementById("content");
+    <!-- HOW IT WORKS -->
+    <section class="how-it-works" id="how-it-works">
+      <div class="section-inner">
+        <div class="section-label">How It Works</div>
+        <h2 class="section-title">Hire help in three simple steps</h2>
+        <p class="section-subtitle">No endless searching. Post what you need, review offers, and hire — all within the app.</p>
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <h3>Post Your Job</h3>
+            <p>Describe what you need, set your budget, and choose a category. It takes less than a minute.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <h3>Compare Offers</h3>
+            <p>Receive offers from local professionals. Review their profiles, ratings, and proposed pricing.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <h3>Hire & Chat</h3>
+            <p>Accept the best offer and coordinate directly through in-app messaging. Simple and secure.</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-        const isAndroid = /Android/i.test(ua);
-        const isIOS =
-          /iPhone|iPad|iPod/i.test(ua) ||
-          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    <!-- CATEGORIES -->
+    <section id="categories">
+      <div class="section-inner">
+        <div class="section-label">Services</div>
+        <h2 class="section-title">Whatever you need, we've got pros for it</h2>
+        <p class="section-subtitle">Browse popular categories or post a custom job.</p>
+        <div class="categories-grid">
+          <div class="category-tile"><span class="category-icon">🔧</span><span>Plumbing</span></div>
+          <div class="category-tile"><span class="category-icon">⚡</span><span>Electrical</span></div>
+          <div class="category-tile"><span class="category-icon">🧹</span><span>Cleaning</span></div>
+          <div class="category-tile"><span class="category-icon">🏠</span><span>Home Repair</span></div>
+          <div class="category-tile"><span class="category-icon">🌿</span><span>Landscaping</span></div>
+          <div class="category-tile"><span class="category-icon">🚚</span><span>Moving</span></div>
+          <div class="category-tile"><span class="category-icon">🎨</span><span>Painting</span></div>
+          <div class="category-tile"><span class="category-icon">📦</span><span>Delivery</span></div>
+          <div class="category-tile"><span class="category-icon">🔑</span><span>Locksmith</span></div>
+          <div class="category-tile"><span class="category-icon">🐾</span><span>Pet Care</span></div>
+          <div class="category-tile"><span class="category-icon">📐</span><span>Assembly</span></div>
+          <div class="category-tile"><span class="category-icon">💻</span><span>Tech Help</span></div>
+        </div>
+      </div>
+    </section>
 
-        const deepLink = "exps://EXPS_URL_PLACEHOLDER";
+    <!-- FOR WORKERS -->
+    <section class="for-workers" id="for-workers">
+      <div class="section-inner">
+        <div class="section-label">For Professionals</div>
+        <h2 class="section-title">Grow your business with Workova</h2>
+        <p class="section-subtitle">Join thousands of professionals finding new clients in their area. Set your own rates, pick your jobs, and build your reputation.</p>
+        <div class="worker-features">
+          <div class="worker-feature">
+            <div class="worker-feature-icon">📍</div>
+            <h4>Local Jobs, Your Radius</h4>
+            <p>Set your service area and only see jobs nearby. No wasted time on jobs across town.</p>
+          </div>
+          <div class="worker-feature">
+            <div class="worker-feature-icon">💰</div>
+            <h4>Set Your Own Rates</h4>
+            <p>Submit offers at prices that work for you. No race to the bottom — compete on quality.</p>
+          </div>
+          <div class="worker-feature">
+            <div class="worker-feature-icon">⭐</div>
+            <h4>Build Your Profile</h4>
+            <p>Showcase your skills, experience, and specialties. Stand out from the crowd.</p>
+          </div>
+          <div class="worker-feature">
+            <div class="worker-feature-icon">💬</div>
+            <h4>Direct Communication</h4>
+            <p>Chat with customers directly in the app. Clarify details and confirm timelines easily.</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-        // Adjust store buttons based on platform
-        const appStoreBtn = document.getElementById("app-store-btn");
-        const playStoreBtn = document.getElementById("play-store-btn");
-        const storeButtonsContainer = document.getElementById("store-buttons");
+    <!-- TRUST -->
+    <section id="trust">
+      <div class="section-inner">
+        <div class="section-label">Trust & Safety</div>
+        <h2 class="section-title">Your safety is our priority</h2>
+        <p class="section-subtitle">We've built Workova with safety features at every step.</p>
+        <div class="trust-grid">
+          <div class="trust-item">
+            <div class="trust-icon">🛡️</div>
+            <h4>Verified Profiles</h4>
+            <p>Every provider goes through a verification process before they can submit offers.</p>
+          </div>
+          <div class="trust-item">
+            <div class="trust-icon">⚖️</div>
+            <h4>Content Moderation</h4>
+            <p>Automated filters and community reporting keep the platform clean and professional.</p>
+          </div>
+          <div class="trust-item">
+            <div class="trust-icon">🔒</div>
+            <h4>Secure Messaging</h4>
+            <p>All communication stays within the app. Your personal info is never shared.</p>
+          </div>
+          <div class="trust-item">
+            <div class="trust-icon">📋</div>
+            <h4>Community Guidelines</h4>
+            <p>Clear rules and standards that every user agrees to. Report issues with one tap.</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-        if (isIOS) {
-          playStoreBtn.className = "store-link";
-          storeButtonsContainer.appendChild(playStoreBtn);
-        } else if (isAndroid) {
-          appStoreBtn.className = "store-link";
-          storeButtonsContainer.insertBefore(playStoreBtn, appStoreBtn);
-        }
+    <!-- CTA -->
+    <section class="cta-section" id="download">
+      <div class="section-inner">
+        <h2>Ready to get started?</h2>
+        <p>Download Workova for free and post your first job in under a minute. Available on iOS and Android.</p>
+        <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap;">
+          <a href="https://apps.apple.com/app/id982107779" class="btn-white" target="_blank">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+            App Store
+          </a>
+          <a href="https://play.google.com/store/apps/details?id=com.workova" class="btn-white" target="_blank">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/></svg>
+            Google Play
+          </a>
+        </div>
+      </div>
+    </section>
 
-        const qrCode = new QRCodeStyling({
-          width: 400,
-          height: 400,
-          data: deepLink,
-          dotsOptions: {
-            color: "#333333",
-            type: "rounded",
-          },
-          backgroundOptions: {
-            color: "#ffffff",
-          },
-          cornersSquareOptions: {
-            type: "extra-rounded",
-          },
-          cornersDotOptions: {
-            type: "dot",
-          },
-          qrOptions: {
-            errorCorrectionLevel: "H",
-          },
-        });
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <a href="/" class="logo">Worko<span>va</span></a>
+          <p>Connecting customers with trusted local service professionals. Post a job, get offers, hire with confidence.</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <h5>Product</h5>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#categories">Services</a>
+            <a href="#for-workers">For Professionals</a>
+            <a href="#download">Download</a>
+          </div>
+          <div class="footer-col">
+            <h5>Legal</h5>
+            <a href="/privacy-policy">Privacy Policy</a>
+            <a href="/terms-of-service">Terms of Service</a>
+            <a href="/community-guidelines">Community Guidelines</a>
+          </div>
+          <div class="footer-col">
+            <h5>Support</h5>
+            <a href="/help-support">Help & Support</a>
+            <a href="mailto:support@workova.net">Contact Us</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>&copy; 2026 Workova. All rights reserved.</span>
+        <span>Made with care for communities everywhere.</span>
+      </div>
+    </footer>
 
-        qrCode.append(document.getElementById("qr-code"));
-
-        if (isAndroid || isIOS) {
-          loadingEl.style.display = "block";
-          contentEl.style.display = "none";
-          window.location.href = deepLink;
-          setTimeout(function () {
-            loadingEl.style.display = "none";
-            contentEl.style.display = "block";
-          }, 500);
-        }
-      })();
-    </script>
   </body>
 </html>

@@ -66,8 +66,10 @@ export default function MessagesScreen() {
   const loadChats = useCallback(async () => {
     if (!user) return;
     const c = await StorageService.getChatsForUser(user.id);
-    setChats(c);
-  }, [user?.id]);
+    const blocked = user.blockedUsers || [];
+    const filtered = c.filter((chat) => !chat.members.some((m) => blocked.includes(m)));
+    setChats(filtered);
+  }, [user?.id, user?.blockedUsers]);
 
   useEffect(() => { loadChats(); }, [loadChats]);
 

@@ -22,8 +22,8 @@ const SECTIONS = [
     body: "All payments are processed securely through the platform. Workova may charge service fees on transactions. Refund policies are outlined in our payment terms and vary by service category.",
   },
   {
-    title: "User Conduct",
-    body: "Users must not engage in fraudulent activity, harassment, discrimination, or any illegal behavior. Violations may result in account suspension or termination.",
+    title: "User Conduct & Content Policy",
+    body: "Users must not engage in fraudulent activity, harassment, discrimination, or any illegal behavior. There is zero tolerance for objectionable content or abusive users. Any user who posts offensive, harassing, discriminatory, or otherwise objectionable content will have their content removed and their account suspended or permanently banned. Workova's moderation team reviews all flagged content within 24 hours. Violations may result in immediate account suspension or termination.",
   },
   {
     title: "Limitation of Liability",

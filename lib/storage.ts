@@ -141,10 +141,11 @@ export const StorageService = {
     return jobs.filter((j) => j.customerId === customerId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
-  async getOpenJobs(excludeUserId?: string): Promise<Job[]> {
+  async getOpenJobs(excludeUserId?: string, blockedUserIds?: string[]): Promise<Job[]> {
     const jobs = await this.getAllJobs();
+    const blocked = blockedUserIds || [];
     return jobs
-      .filter((j) => j.status === "open" && j.customerId !== excludeUserId)
+      .filter((j) => j.status === "open" && j.customerId !== excludeUserId && !blocked.includes(j.customerId))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   },
 
@@ -244,7 +245,7 @@ export const StorageService = {
     await setJSON(KEYS.MESSAGES, messages);
   },
 
-  async blockUser(currentUserId: string, targetUserId: string): Promise<void> {
+  async blockUser(currentUserId: string, targetUserId: string): Promise<AuthUser | null> {
     const user = await this.getAuthUser();
     if (user && user.id === currentUserId) {
       if (!user.blockedUsers.includes(targetUserId)) {
@@ -252,6 +253,24 @@ export const StorageService = {
         await this.setAuthUser(user);
       }
     }
+    return user;
+  },
+
+  async unblockUser(currentUserId: string, targetUserId: string): Promise<AuthUser | null> {
+    const user = await this.getAuthUser();
+    if (user && user.id === currentUserId) {
+      user.blockedUsers = user.blockedUsers.filter((id) => id !== targetUserId);
+      await this.setAuthUser(user);
+    }
+    return user;
+  },
+
+  async isUserBlocked(currentUserId: string, targetUserId: string): Promise<boolean> {
+    const user = await this.getAuthUser();
+    if (user && user.id === currentUserId) {
+      return user.blockedUsers.includes(targetUserId);
+    }
+    return false;
   },
 
   async createReport(report: Report): Promise<void> {

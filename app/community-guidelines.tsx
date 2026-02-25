@@ -18,12 +18,16 @@ const SECTIONS = [
     body: "The following behaviors are not allowed on Workova:\n\n- Spam, phishing, or fraudulent activity\n- Sharing personal information of others without consent\n- Posting inappropriate, obscene, or offensive content\n- Attempting to circumvent platform fees or payment systems\n- Creating multiple accounts to evade bans or restrictions\n- Threatening, intimidating, or bullying other users",
   },
   {
+    title: "Zero Tolerance Policy",
+    body: "Workova has a zero tolerance policy for objectionable content and abusive users. Any content that is offensive, harassing, discriminatory, sexually explicit, violent, or otherwise objectionable will be removed immediately. Users who post such content will have their accounts suspended or permanently banned without warning.",
+  },
+  {
     title: "Reporting & Enforcement",
-    body: "If you encounter content or behavior that violates these guidelines, please use the in-app report feature to flag it. Our moderation team reviews all reports and takes appropriate action, which may include content removal, warnings, temporary suspension, or permanent bans depending on the severity of the violation.",
+    body: "If you encounter content or behavior that violates these guidelines, please use the in-app report (flag icon) or block feature (ban icon) on any job listing or chat conversation. Blocking a user instantly removes all their content from your feed. Our moderation team reviews all reports within 24 hours and takes appropriate action, which may include content removal, warnings, temporary suspension, or permanent bans depending on the severity of the violation. Reported content may be removed and the offending user ejected from the platform.",
   },
   {
     title: "Account Termination",
-    body: "Workova reserves the right to suspend or terminate accounts that violate these community guidelines. Repeated or severe violations will result in permanent removal from the platform. Users may appeal account actions by contacting our support team at support@workova.app.",
+    body: "Workova reserves the right to suspend or terminate accounts that violate these community guidelines. Repeated or severe violations will result in permanent removal from the platform. Users who provide objectionable content will be ejected from the platform. Users may appeal account actions by contacting our support team at support@workova.app.",
   },
 ];
 

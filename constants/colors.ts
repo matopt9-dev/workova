@@ -1,0 +1,33 @@
+const Colors = {
+  primary: "#0D9488",
+  primaryLight: "#14B8A6",
+  primaryDark: "#0F766E",
+  primarySurface: "rgba(13,148,136,0.08)",
+  accent: "#F59E0B",
+  accentLight: "#FBBF24",
+  background: "#F7F8FA",
+  surface: "#FFFFFF",
+  surfaceSecondary: "#F1F5F9",
+  text: "#0B0F1A",
+  textSecondary: "rgba(11,15,26,0.65)",
+  textMuted: "rgba(11,15,26,0.4)",
+  border: "rgba(0,0,0,0.05)",
+  borderSolid: "#E8EAF0",
+  borderLight: "rgba(0,0,0,0.03)",
+  success: "#10B981",
+  successLight: "#ECFDF5",
+  error: "#EF4444",
+  errorLight: "#FEE2E2",
+  warning: "#F59E0B",
+  info: "#3B82F6",
+  overlay: "rgba(15, 23, 42, 0.5)",
+  light: {
+    text: "#0B0F1A",
+    background: "#F7F8FA",
+    tint: "#0D9488",
+    tabIconDefault: "#94A3B8",
+    tabIconSelected: "#0D9488",
+  },
+};
+
+export default Colors;

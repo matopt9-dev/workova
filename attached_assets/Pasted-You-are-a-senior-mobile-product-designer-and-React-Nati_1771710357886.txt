@@ -1,0 +1,261 @@
+You are a senior mobile product designer and React Native (Expo + expo-router) UI engineer.
+
+PROJECT: Workova mobile app (React Native / Expo / expo-router)
+MISSION: Polish the existing UI to feel like a premium, production-ready marketplace (Stripe/Linear/Airbnb level), WITHOUT changing any business logic, Firebase logic, routes, or data models.
+
+ABSOLUTE CONSTRAINTS (DO NOT VIOLATE):
+- Do NOT change navigation structure.
+- Do NOT rename or move expo-router routes.
+- Do NOT modify Firebase queries, authentication logic, subscriptions, or payment logic.
+- Do NOT alter data models or collection shapes.
+- Only visual + interaction polish (styles, spacing, components, micro-interactions).
+- No new animation libraries. Only React Native built-ins.
+
+DELIVERABLES:
+1) A global visual system (theme/tokens) applied consistently across all screens.
+2) Reusable “premium UI primitives”: Screen, Card, Button, ServiceIconTile, EmptyState, TrustBadgeRow.
+3) Apply these primitives across ALL screens with minimal diff (replace wrappers, do not rewrite logic).
+4) Add calm trust/safety microcopy on key screens (Sign-in, booking/payment areas, provider onboarding/payout areas) WITHOUT changing logic.
+5) Add improved empty states across Jobs, Nearby Jobs, Messages, and any empty list.
+
+====================================================
+A) GLOBAL VISUAL SYSTEM ADJUSTMENTS (APPLY EVERYWHERE)
+====================================================
+
+BACKGROUND SYSTEM:
+- Replace pure white full-screen backgrounds with layered surfaces:
+  - Primary background: #F7F8FA
+  - Cards/panels/containers: #FFFFFF
+  - Avoid harsh contrast, keep calm.
+
+CARD / SURFACE STYLING:
+- For all tappable modules, job items, list rows, panels:
+  - Border radius: 16–20
+  - Border: rgba(0,0,0,0.05) (use 1px)
+  - Shadow: extremely soft (subtle). Keep it nearly invisible.
+  - Padding: slightly increased, avoid cramped feel.
+
+BUTTON REFINEMENT:
+- ALL buttons:
+  - Border radius: 14–18
+  - Slightly more vertical padding
+  - Font weight: 700–800
+  - Press feedback: scale to 0.97 OR opacity drop (use RN Animated or Pressable style)
+
+TYPOGRAPHY HIERARCHY:
+- Headings: a bit bolder + slightly larger where appropriate
+- Secondary text: use opacity 0.6–0.7
+- Increase spacing between title and subtitle
+- Keep minimalism, no redesign.
+
+INTERACTION POLISH:
+- Buttons: scale down 0.97 on press (no 3rd party libs)
+- Icon containers: light opacity feedback on press
+- Transitions: just ensure no abrupt layout jumps (avoid sudden height changes).
+
+=====================================
+B) SERVICES ROW (ICON TILE) IMPROVEMENT
+=====================================
+For each service category icon tile (Handyman, Cleaning, HVAC, etc):
+- White background
+- Border radius: 18–22
+- Border rgba(0,0,0,0.05) OR soft shadow (not heavy)
+- Increase internal padding
+- Slightly increase spacing between items
+- Must feel tappable and premium, not flat.
+
+========================
+C) EMPTY STATES IMPROVEMENT
+========================
+Replace generic empty patterns with:
+Title: “No open jobs nearby”
+Subtitle: “Be the first to post a job request and receive offers.”
+
+Apply across:
+- Jobs screen
+- Nearby jobs screen
+- Messages screen
+- Any empty lists
+
+Tone: confident, reassuring, alive. Not promotional.
+
+==================================
+D) TRUST & SAFETY VISUAL SIGNALS
+==================================
+Add small, calm trust indicators (UI-only text, no logic changes):
+Examples:
+- “Payments secured by Stripe”
+- “Verified professionals”
+- “Safe & reliable hiring”
+
+Place discreetly near:
+- Sign-in screen (below buttons)
+- Job booking/payment areas (near pay/confirm CTA)
+- Provider onboarding/payment/payout sections
+
+Style:
+- Small text, muted opacity (0.65)
+- Optional tiny icon if already available (don’t add new icon packs unless already installed)
+- Must not look like an ad.
+
+===================================
+E) IMPLEMENTATION APPROACH (DO THIS)
+===================================
+
+STEP 1 — Add design tokens (no behavior change)
+- Create a central theme file, e.g.:
+  /src/ui/theme.ts (or /components/ui/theme.ts depending on structure)
+Include:
+- colors:
+  bg: #F7F8FA
+  surface: #FFFFFF
+  text: #0B0F1A (or existing primary text)
+  subtext: rgba(11,15,26,0.65)
+  border: rgba(0,0,0,0.05)
+- radii:
+  card: 18
+  button: 16
+  tile: 20
+- spacing:
+  xs 6, sm 10, md 14, lg 18, xl 24
+- shadow (very soft):
+  iOS: shadowColor #000, shadowOpacity 0.06, shadowRadius 10, shadowOffset {0,4}
+  Android: elevation 1 (or 2 max)
+
+STEP 2 — Create reusable UI primitives (WRAPPERS ONLY)
+Add these components in /src/ui (or similar). Keep them tiny, style-focused.
+
+1) <Screen> wrapper:
+- Applies background #F7F8FA
+- SafeAreaView + consistent horizontal padding (md)
+- Optional prop: “noPadding”
+
+2) <Card>:
+- White background, radius 18
+- Border 1px rgba(0,0,0,0.05)
+- Soft shadow (very light)
+- Padding default md
+
+3) <PrimaryButton> and <SecondaryButton>:
+- Pressable with Animated scale to 0.97 on press in / out
+- FontWeight 800
+- Vertical padding increased
+- Radius 16
+- Must preserve existing onPress + disabled logic EXACTLY
+
+4) <ServiceIconTile>:
+- Pressable + subtle opacity feedback
+- White tile surface, radius 20, border rgba(0,0,0,0.05)
+- Internal padding lg
+- Label text slightly bolder than before
+
+5) <EmptyState>:
+Props: title, subtitle, optional action (if already exists)
+- Title bold
+- Subtitle muted opacity
+- Nice vertical spacing
+
+6) <TrustBadgesRow> (UI-only):
+- Small muted text lines:
+  “Payments secured by Stripe”
+  “Verified professionals”
+  “Safe & reliable hiring”
+- Use only where appropriate (sign-in/payment/provider payout)
+
+IMPORTANT: Do not change business logic. Do not alter handlers. Replace only visual wrappers.
+
+STEP 3 — Apply primitives across ALL screens (minimal diffs)
+For each screen:
+- Replace top-level container background white -> <Screen>
+- Wrap lists/sections in <Card> where it’s currently flat
+- Convert service categories row -> <ServiceIconTile>
+- Replace empty list renderers -> <EmptyState title/subtitle ...>
+- Replace buttons -> <PrimaryButton / SecondaryButton> while preserving props and onPress.
+
+DO NOT:
+- Change any route path
+- Change data fetching
+- Change query keys
+- Change navigation calls
+- Change Firestore/RealtimeDB structure
+
+STEP 4 — Add policy & support content screens (UI only)
+- Add 3 static screens/pages:
+  - Privacy Policy
+  - Terms of Service
+  - Help & Support
+- These can be:
+  a) existing route screens if they already exist (just style), OR
+  b) new screens ONLY IF there are already placeholders/routes for them.
+If routes already exist, populate content.
+If routes do NOT exist, DO NOT add new navigation — just create components that can be mounted where the app already links to policy/support.
+
+Content must be scrollable (ScrollView), use clean typography, headings, subtext opacity.
+
+Use placeholder emails only if not configured in code (do NOT wire email sending logic).
+
+=========================================================
+F) LEGAL / SUPPORT CONTENT (INSERT THIS TEXT VERBATIM)
+=========================================================
+Use the provided Privacy Policy / Terms / Help & Support copy exactly as given in the user message.
+- Ensure “Effective Date: [Insert Date]” remains.
+- Ensure Stripe language remains.
+- Replace support@yourdomain.com with support@workova.com ONLY IF that address exists in your environment. If not, keep it as placeholder but display “support@workova.com (replace with your email)”.
+
+=========================================================
+G) QUALITY BAR / ACCEPTANCE CRITERIA
+=========================================================
+- Every screen background is #F7F8FA (unless it’s a modal already styled).
+- Every “module” feels like a soft card with radius 16–20.
+- Buttons feel native iOS: bolder, padded, press feedback.
+- Empty states are consistent, calm, and helpful.
+- Trust badges are present in sign-in and payment/payout areas (UI-only).
+- No route changes. No Firebase changes. No logic changes.
+- App compiles with no new dependencies unless already installed.
+
+=========================================================
+H) OUTPUT REQUIRED FROM YOU (THE AGENT)
+=========================================================
+1) List the files you will touch.
+2) Implement theme tokens.
+3) Create the UI primitives.
+4) Apply across screens with minimal diffs.
+5) Confirm zero business logic changes (describe what you did NOT touch).
+6) Provide before/after screenshots notes or a brief visual checklist.
+
+Proceed now. Do not ask questions. Make safe assumptions and keep diffs small.
+
+/**
+ * One-time admin bootstrap.
+ * Run locally/CI with a service account key.
+ * Does NOT change app logic, only sets a claim on an existing user.
+ */
+import admin from "firebase-admin";
+
+const SERVICE_ACCOUNT_PATH = process.env.FIREBASE_SERVICE_ACCOUNT_PATH; // path to JSON
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "ADMIN_EMAIL_HERE";      // <-- replace
+
+if (!SERVICE_ACCOUNT_PATH) {
+  throw new Error("Missing FIREBASE_SERVICE_ACCOUNT_PATH env var");
+}
+
+admin.initializeApp({
+  credential: admin.credential.cert(require(SERVICE_ACCOUNT_PATH)),
+});
+
+async function run() {
+  const user = await admin.auth().getUserByEmail(ADMIN_EMAIL);
+  await admin.auth().setCustomUserClaims(user.uid, { admin: true });
+  console.log(`✅ Set admin=true for ${ADMIN_EMAIL} (${user.uid})`);
+  process.exit(0);
+}
+
+run().catch((e) => {
+  console.error("❌ Failed to set admin claim:", e);
+  process.exit(1);
+});
+
+npm i firebase-admin
+ADMIN_EMAIL="you@workova.com" FIREBASE_SERVICE_ACCOUNT_PATH="./serviceAccount.json" npx ts-node scripts/make-admin.ts
+
+Admin Email is djtwin25@outlook.com

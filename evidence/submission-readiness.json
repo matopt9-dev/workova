@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-02-24T17:36:59.504Z",
+  "commitHash": "5365955",
+  "appInfo": {
+    "name": "Workova",
+    "version": "1.0.0",
+    "ios": {
+      "bundleId": "com.workova"
+    },
+    "android": {
+      "package": "com.workova"
+    }
+  },
+  "overallStatus": "PASS",
+  "sections": {
+    "metadataValidation": {
+      "status": "PASS",
+      "summary": {
+        "total": 17,
+        "pass": 15,
+        "fail": 0,
+        "warn": 2
+      }
+    },
+    "lint": {
+      "status": "PASS"
+    },
+    "typecheck": {
+      "status": "PASS"
+    },
+    "unitTests": {
+      "status": "SKIPPED"
+    },
+    "smokeTest": {
+      "status": "NOT_RUN"
+    },
+    "screenshots": {
+      "ios": {
+        "count": 0
+      },
+      "android": {
+        "count": 0
+      }
+    }
+  },
+  "knownRisks": [
+    "iOS screenshots not yet generated (requires macOS CI)",
+    "Android screenshots not yet generated (requires CI emulator)",
+    "Post-deploy smoke test not yet run"
+  ]
+}

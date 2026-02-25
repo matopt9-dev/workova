@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-02-24T17:37:05.260Z",
+  "baseUrl": "http://localhost:5000",
+  "overallStatus": "PASS",
+  "summary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0
+  },
+  "endpoints": [
+    {
+      "endpoint": "/api/health",
+      "status": 200,
+      "ok": true,
+      "responseTime": 54,
+      "body": {
+        "status": "ok",
+        "timestamp": "2026-02-24T17:37:05.244Z"
+      }
+    },
+    {
+      "endpoint": "/api/version",
+      "status": 200,
+      "ok": true,
+      "responseTime": 6,
+      "body": {
+        "name": "Workova",
+        "version": "1.0.0"
+      }
+    }
+  ]
+}

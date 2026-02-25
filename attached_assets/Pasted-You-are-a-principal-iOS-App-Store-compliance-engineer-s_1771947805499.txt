@@ -1,0 +1,252 @@
+You are a principal iOS/App Store compliance engineer + senior React Native (Expo) architect.
+
+GOAL
+Ship a new TestFlight build that passes Apple App Review with ZERO guideline violations, based on these exact rejection items:
+
+1) Guideline 5.1.1 — Login wall for non-account features (must allow browsing without login)
+2) Guideline 2.1 — Demo account credentials failed (must provide working demo account with full access + pre-populated content)
+3) Guideline 5.1.1(v) — Account deletion required (must allow deletion initiation in-app)
+4) Guideline 2.1 — WeatherKit question (must clearly state Yes/No and navigation steps if Yes)
+5) Guideline 1.2 — User Generated Content safeguards (EULA/Terms acceptance, filter, report, block, 24h moderation commitment)
+
+APP CONTEXT
+This is a handyman services app (Workova). It includes browsing services, viewing educational how-to videos (Lowe’s/Home Depot links), an AI assistant that walks users through jobs, and premium call-in services. Any paid digital features must use Apple In-App Purchases (StoreKit) and include Restore Purchases.
+
+HARD CONSTRAINTS
+- Do not break the build.
+- Do not change existing business logic unless required to satisfy Apple review.
+- Keep routes stable (expo-router).
+- Implement in a minimal, review-proof way with clear UX.
+- Add missing compliance screens/links (Privacy Policy, Support, Terms/EULA).
+- Remove any sensitive credentials shown in logs/UI.
+- Everything must be fully functional (no placeholder buttons).
+
+DELIVERABLES YOU MUST PRODUCE
+A) A precise implementation plan (step-by-step)
+B) Code changes (copy/paste ready) for React Native (Expo + expo-router) + Firebase (if used)
+C) App Store Connect “Review Notes” text (demo credentials + feature navigation + WeatherKit statement)
+D) A preflight checklist to confirm the reviewer can access all features on a clean install
+
+PROJECT DISCOVERY (DO NOT ASK QUESTIONS UNLESS CRITICAL; INFER DEFAULTS)
+Assume:
+- Expo + expo-router
+- Firebase Auth + Firestore
+- Existing screens for login/register, services/products listing, profile/settings
+If something is missing, create it.
+
+========================
+TASK 1 — REMOVE LOGIN WALL (Guideline 5.1.1)
+========================
+Implement “Guest Mode” so users can access all non-account-based features without registering.
+
+REQUIREMENTS
+- Add a landing choice: “Continue as Guest” and “Sign in / Create account”
+- Guest can browse:
+  - services list + service details
+  - educational videos page (external links)
+  - FAQs/How it Works
+  - view pricing ranges
+- Only gate account-based actions behind login:
+  - booking/request job
+  - saving/favorites
+  - messaging
+  - posting/UGC
+  - any payment/checkout
+- When guest taps a gated action, show a modal prompting sign-in and deep link back after login.
+
+IMPLEMENTATION
+- Create an auth state model: { user, isGuest }
+- Persist guest state in SecureStore or AsyncStorage
+- Update router guards to allow guest to access public routes
+- Ensure app never blocks the first launch with auth requirement
+
+OUTPUT
+- Provide exact file diffs and new files:
+  - app/(public)/index.tsx (guest entry)
+  - app/(auth)/login.tsx, register.tsx adjustments
+  - app/(tabs)/services.tsx public read-only
+  - components/AuthGateModal.tsx
+  - lib/auth/session.ts (guest + user session helpers)
+
+========================
+TASK 2 — DEMO ACCOUNT THAT WORKS (Guideline 2.1)
+========================
+Fix demo login failure and create reviewer-ready demo experience.
+
+REQUIREMENTS
+- Create a “Reviewer Demo” account flow:
+  Option A: a real demo account that always works (preferred)
+  Option B: a built-in “Demo Mode” that unlocks all features with seed content (allowed)
+- Provide a “Demo Login” button on login screen to auto-fill credentials and sign in.
+- Seed pre-populated content in Firestore (services, sample jobs, sample messages/posts).
+- Ensure fresh install works:
+  - no email verification blocks
+  - no captcha/human verification blocks
+  - no environment variable mismatch
+- Add a hidden “Reset Demo Data” dev-only switch OFF in production.
+
+IMPLEMENTATION
+- Write a seed script (Node) or Cloud Function to seed demo data.
+- Add an in-app action (admin only) to reseed demo (optional).
+- Ensure demo user has “admin-like” access to all features used by reviewers.
+- Add robust error messaging if sign-in fails and log to a safe channel (no credentials printed).
+
+OUTPUT
+- Provide:
+  - scripts/seedDemo.ts (or functions/seedDemo)
+  - Firestore collections + sample docs schema
+  - Login screen changes including Demo Login button
+  - Exact steps to create demo user if needed
+
+========================
+TASK 3 — ACCOUNT DELETION (Guideline 5.1.1(v))
+========================
+Add in-app account deletion initiation.
+
+REQUIREMENTS
+- Settings → Account → Delete Account
+- Confirmation + re-authentication if needed
+- Deletion must:
+  - delete Firebase Auth user
+  - delete or anonymize Firestore user doc + associated content
+  - handle dependent data: jobs/messages/posts/ratings
+- If full deletion of UGC is not possible, anonymize while removing personal data.
+- If any deletion step must be completed on web, provide a direct URL to deletion page (but prefer fully in-app).
+
+IMPLEMENTATION
+- Use a Cloud Function “deleteUser” callable or HTTPS endpoint to perform secure server-side deletion.
+- Client calls function then signs out.
+- Ensure it works for demo user too (or block deletion for demo account with explanation—BUT Apple might test it; safer: allow deletion and auto-recreate demo user via seed).
+
+OUTPUT
+- Provide:
+  - app/(settings)/account.tsx with Delete Account UI
+  - functions/deleteUser.ts (admin SDK)
+  - Firestore rules updates as needed
+
+========================
+TASK 4 — WEATHERKIT QUESTION (Guideline 2.1)
+========================
+Determine and document WeatherKit usage.
+
+REQUIREMENTS
+- Search the codebase for “WeatherKit”, “weatherkit”, “WeatherService”, “forecast”, “weather”.
+- If WeatherKit is NOT used:
+  - add a constant + documentation: “No WeatherKit used”
+  - prepare Review Notes statement
+- If WeatherKit IS used:
+  - document exact navigation steps to reach it
+  - ensure required permissions strings exist (location usage description)
+  - ensure feature works without login if it’s non-account-based
+
+OUTPUT
+- Provide:
+  - a short report of findings
+  - the exact App Store Connect answer text
+
+========================
+TASK 5 — UGC SAFEGUARDS (Guideline 1.2)
+========================
+If the app contains ANY user-generated content (posts, comments, profiles, messages visible to others), implement required protections.
+
+REQUIREMENTS
+- Terms/EULA acceptance at first use of posting/chatting (and store acceptance timestamp)
+- Terms must explicitly state:
+  - no objectionable content
+  - no abusive users
+  - enforcement + removal
+- Filtering objectionable content:
+  - minimum viable: block list + hide reported content from reporter instantly
+  - plus: simple keyword filter for common slurs/profanity (client + server)
+- Reporting:
+  - report content + report user
+  - creates Firestore doc in reports/ with metadata
+- Blocking:
+  - block user removes their content immediately from blocker’s feed
+  - notifies developer (create report entry + optional email)
+- Moderation SLA:
+  - implement admin moderation screen listing reports
+  - implement “remove content” + “ban user” actions
+  - include operational plan: act within 24h
+
+IMPLEMENTATION
+- Firestore schema:
+  - users/{uid}
+  - posts/{postId}
+  - comments/{commentId}
+  - reports/{reportId}
+  - blocks/{uid}/blocked/{blockedUid}
+  - bans/{uid}
+- Security rules:
+  - users can write reports
+  - blocked content hidden by queries + rules
+  - banned users cannot create content
+- Admin tools:
+  - app/(admin)/reports.tsx
+  - functions/moderateReport.ts (optional)
+- UI:
+  - “Report” + “Block” buttons on every UGC surface
+  - “Community Guidelines” link
+
+OUTPUT
+- Provide:
+  - Terms screen + acceptance logic
+  - Report/Block UI components
+  - Firestore rules
+  - Basic moderation screen for admin/demo reviewer (read-only is fine if explained, but actions preferred)
+
+========================
+TASK 6 — PAYMENTS MUST USE IAP
+========================
+Anything paid that unlocks digital features must use Apple In-App Purchases.
+
+REQUIREMENTS
+- Premium call-in services + AI premium features:
+  - define products as subscriptions or non-consumables in App Store Connect
+  - implement StoreKit via expo-in-app-purchases (or react-native-iap if bare)
+  - include “Restore Purchases”
+  - ensure paywalls do not route to Stripe for digital unlocks
+- If you also sell real-world handyman services, payments for the real-world service can be handled differently, but DO NOT unlock digital-only features outside IAP.
+
+IMPLEMENTATION (Expo)
+- Use the recommended Expo module approach for IAP for managed workflow
+- Build a Paywall screen:
+  - list products
+  - purchase
+  - restore
+  - show active entitlement
+- Persist entitlement in Firestore for cross-device access (validated by receipt on server if possible)
+- Never expose API keys in client
+
+OUTPUT
+- Provide:
+  - app/(premium)/paywall.tsx
+  - lib/iap.ts (purchase + restore)
+  - entitlement model (Premium boolean)
+  - UI hooks to gate premium features behind entitlement
+
+========================
+TASK 7 — REQUIRED LEGAL PAGES + APP REVIEW COMPLETENESS
+========================
+Add:
+- Privacy Policy URL in-app and in App Store Connect
+- Support URL in-app and in App Store Connect
+- Terms/EULA in-app
+- A “Contact Support” screen (email + form link)
+
+OUTPUT
+- app/(legal)/privacy.tsx, terms.tsx, support.tsx
+- Settings links to these pages
+- A single config file with these URLs
+
+========================
+FINAL OUTPUT FORMAT (MANDATORY)
+1) “Patch Plan” checklist
+2) “File Map” with new/changed files
+3) Full code blocks for each new file + edits with clear markers
+4) Firestore rules (if used)
+5) Cloud Functions code (if used)
+6) App Store Connect Review Notes text (ready to paste)
+7) Preflight test plan (fresh install steps)
+
+BEGIN NOW.

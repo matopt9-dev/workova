@@ -1,0 +1,41 @@
+appId: ${APP_ID}
+name: Login Flow
+---
+- clearState
+- launchApp
+
+- assertVisible:
+    id: "auth.email"
+    label: "Login screen is visible"
+
+- tapOn:
+    id: "auth.email"
+- inputText: ${E2E_DEMO_EMAIL}
+
+- tapOn:
+    id: "auth.password"
+- inputText: ${E2E_DEMO_PASSWORD}
+
+- tapOn:
+    id: "auth.submit"
+
+- extendedWaitUntil:
+    visible:
+      id: "nav.home"
+    timeout: 10000
+
+- assertVisible:
+    id: "nav.home"
+    label: "Home tab visible after login"
+
+- assertVisible:
+    id: "nav.jobs"
+    label: "Jobs tab visible after login"
+
+- assertVisible:
+    id: "nav.messages"
+    label: "Messages tab visible after login"
+
+- assertVisible:
+    id: "nav.account"
+    label: "Account tab visible after login"

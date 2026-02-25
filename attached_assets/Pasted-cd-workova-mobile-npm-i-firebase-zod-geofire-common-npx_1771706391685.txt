@@ -1,0 +1,6921 @@
+cd workova-mobile
+
+npm i firebase zod geofire-common
+
+npx expo install expo-location expo-image-picker
+
+
+
+export type UserRole = "customer" | "worker" | "both" | "admin";
+
+export type VerificationLevel = "basic" | "id_verified" | "background_checked";
+
+
+
+export type JobStatus =
+
+  | "open"
+
+  | "offered"
+
+  | "booked"
+
+  | "in_progress"
+
+  | "complete"
+
+  | "cancelled"
+
+  | "disputed";
+
+
+
+export type JobCategory =
+
+  | "handyman"
+
+  | "cleaning"
+
+  | "hvac"
+
+  | "remodeling"
+
+  | "moving"
+
+  | "tutoring"
+
+  | "babysitting";
+
+
+
+export type Job = {
+
+  id: string;
+
+  customerId: string;
+
+  categoryId: JobCategory;
+
+  regionId: string; // ex: "US-DE" for Delaware; scale later
+
+  title: string;
+
+  description: string;
+
+  budgetMin: number;
+
+  budgetMax: number;
+
+  location: { lat: number; lng: number; geohash: string };
+
+  photos: string[];
+
+  status: JobStatus;
+
+  createdAt: any;
+
+};
+
+
+
+import { geohashForLocation } from "geofire-common";
+
+
+
+export function makeGeohash(lat: number, lng: number) {
+
+  return geohashForLocation([lat, lng]);
+
+}
+
+
+
+import { View, Text } from "react-native";
+
+
+
+export default function Home() {
+
+  return (
+
+    <View style={{ flex: 1, padding: 20, gap: 10 }}>
+
+      <Text style={{ fontSize: 22, fontWeight: "700" }}>Workova</Text>
+
+      <Text>Find trusted help or get hired for work.</Text>
+
+    </View>
+
+  );
+
+}
+
+
+
+
+
+import { useEffect, useState } from "react";
+
+import { View, Text, Pressable } from "react-native";
+
+import { auth, db } from "../../src/firebase";
+
+import { doc, getDoc, setDoc } from "firebase/firestore";
+
+import { router } from "expo-router";
+
+
+
+export default function Account() {
+
+  const user = auth.currentUser;
+
+  const [role, setRole] = useState<string>("customer");
+
+
+
+  useEffect(() => {
+
+    (async () => {
+
+      if (!user) return;
+
+      const snap = await getDoc(doc(db, "users", user.uid));
+
+      if (snap.exists()) setRole(snap.data().role ?? "customer");
+
+    })();
+
+  }, [user]);
+
+
+
+  async function setUserRole(next: "customer" | "worker" | "both") {
+
+    if (!user) return;
+
+    await setDoc(
+
+      doc(db, "users", user.uid),
+
+      { role: next },
+
+      { merge: true }
+
+    );
+
+    setRole(next);
+
+    if (next === "worker" || next === "both") {
+
+      router.push("/(tabs)/worker-onboarding");
+
+    }
+
+  }
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 20, gap: 12 }}>
+
+      <Text style={{ fontSize: 20, fontWeight: "700" }}>Account</Text>
+
+      <Text>Signed in as: {user?.email}</Text>
+
+      <Text>Role: {role}</Text>
+
+
+
+      <Text style={{ marginTop: 10, fontWeight: "700" }}>
+
+        Choose how you use Workova
+
+      </Text>
+
+
+
+      <Pressable
+
+        onPress={() => setUserRole("customer")}
+
+        style={{ padding: 14, borderRadius: 12, borderWidth: 1 }}
+
+      >
+
+        <Text>Customer (hire professionals)</Text>
+
+      </Pressable>
+
+
+
+      <Pressable
+
+        onPress={() => setUserRole("worker")}
+
+        style={{ padding: 14, borderRadius: 12, borderWidth: 1 }}
+
+      >
+
+        <Text>Worker (find jobs)</Text>
+
+      </Pressable>
+
+
+
+      <Pressable
+
+        onPress={() => setUserRole("both")}
+
+        style={{ padding: 14, borderRadius: 12, borderWidth: 1 }}
+
+      >
+
+        <Text>Both</Text>
+
+      </Pressable>
+
+    </View>
+
+  );
+
+}
+
+
+
+import { useEffect, useMemo, useState } from "react";
+
+import { View, Text, Pressable, FlatList } from "react-native";
+
+import { auth, db } from "../../src/firebase";
+
+import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
+
+import { router } from "expo-router";
+
+
+
+export default function Jobs() {
+
+  const user = auth.currentUser;
+
+  const [jobs, setJobs] = useState<any[]>([]);
+
+
+
+  const q = useMemo(() => {
+
+    if (!user) return null;
+
+    return query(
+
+      collection(db, "jobs"),
+
+      where("customerId", "==", user.uid),
+
+      orderBy("createdAt", "desc")
+
+    );
+
+  }, [user]);
+
+
+
+  useEffect(() => {
+
+    if (!q) return;
+
+    const unsub = onSnapshot(q, (snap) => {
+
+      setJobs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+
+    });
+
+    return () => unsub();
+
+  }, [q]);
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 16, gap: 12 }}>
+
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+
+        <Text style={{ fontSize: 20, fontWeight: "700" }}>Jobs</Text>
+
+        <Pressable
+
+          onPress={() => router.push("/(tabs)/jobs-create")}
+
+          style={{ backgroundColor: "black", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12 }}
+
+        >
+
+          <Text style={{ color: "white", fontWeight: "700" }}>Create</Text>
+
+        </Pressable>
+
+      </View>
+
+
+
+      {jobs.length === 0 ? (
+
+        <Text>No jobs yet. Create your first request.</Text>
+
+      ) : (
+
+        <FlatList
+
+          data={jobs}
+
+          keyExtractor={(item) => item.id}
+
+          renderItem={({ item }) => (
+
+            <View style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 10 }}>
+
+              <Text style={{ fontWeight: "700" }}>{item.title}</Text>
+
+              <Text>{item.categoryId} • {item.status}</Text>
+
+              <Text>Budget: ${item.budgetMin}–${item.budgetMax}</Text>
+
+            </View>
+
+          )}
+
+        />
+
+      )}
+
+    </View>
+
+  );
+
+}
+
+
+
+import { useState } from "react";
+
+import { View, Text, TextInput, Pressable, Alert } from "react-native";
+
+import * as Location from "expo-location";
+
+import { auth, db } from "../../src/firebase";
+
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+
+import { CreateJobSchema } from "../../src/validators";
+
+import { makeGeohash } from "../../src/geo";
+
+import { router } from "expo-router";
+
+
+
+const CATS = [
+
+  "handyman",
+
+  "cleaning",
+
+  "hvac",
+
+  "remodeling",
+
+  "moving",
+
+  "tutoring",
+
+  "babysitting",
+
+] as const;
+
+
+
+export default function JobsCreate() {
+
+  const user = auth.currentUser;
+
+
+
+  const [categoryId, setCategoryId] = useState<(typeof CATS)[number]>("handyman");
+
+  const [regionId, setRegionId] = useState("US-DE");
+
+  const [title, setTitle] = useState("Help needed");
+
+  const [description, setDescription] = useState("Describe the job clearly...");
+
+  const [budgetMin, setBudgetMin] = useState("80");
+
+  const [budgetMax, setBudgetMax] = useState("200");
+
+  const [isSaving, setIsSaving] = useState(false);
+
+
+
+  async function createJob() {
+
+    if (!user) return;
+
+
+
+    setIsSaving(true);
+
+    try {
+
+      const perm = await Location.requestForegroundPermissionsAsync();
+
+      if (perm.status !== "granted") {
+
+        Alert.alert("Location required", "We need your location to match pros nearby.");
+
+        return;
+
+      }
+
+
+
+      const pos = await Location.getCurrentPositionAsync({});
+
+      const lat = pos.coords.latitude;
+
+      const lng = pos.coords.longitude;
+
+
+
+      const parsed = CreateJobSchema.safeParse({
+
+        categoryId,
+
+        regionId,
+
+        title,
+
+        description,
+
+        budgetMin: Number(budgetMin),
+
+        budgetMax: Number(budgetMax),
+
+        lat,
+
+        lng,
+
+      });
+
+
+
+      if (!parsed.success) {
+
+        Alert.alert("Fix your input", parsed.error.issues[0]?.message ?? "Invalid input");
+
+        return;
+
+      }
+
+
+
+      const geohash = makeGeohash(lat, lng);
+
+
+
+      await addDoc(collection(db, "jobs"), {
+
+        customerId: user.uid,
+
+        categoryId,
+
+        regionId,
+
+        title,
+
+        description,
+
+        budgetMin: Number(budgetMin),
+
+        budgetMax: Number(budgetMax),
+
+        location: { lat, lng, geohash },
+
+        photos: [],
+
+        status: "open",
+
+        createdAt: serverTimestamp(),
+
+      });
+
+
+
+      router.back();
+
+    } catch (e: any) {
+
+      Alert.alert("Error", e?.message ?? "Could not create job");
+
+    } finally {
+
+      setIsSaving(false);
+
+    }
+
+  }
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 16, gap: 10 }}>
+
+      <Text style={{ fontSize: 20, fontWeight: "700" }}>Create Job</Text>
+
+
+
+      <Text style={{ fontWeight: "700" }}>Category</Text>
+
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+
+        {CATS.map((c) => (
+
+          <Pressable
+
+            key={c}
+
+            onPress={() => setCategoryId(c)}
+
+            style={{
+
+              borderWidth: 1,
+
+              paddingHorizontal: 10,
+
+              paddingVertical: 8,
+
+              borderRadius: 999,
+
+              backgroundColor: categoryId === c ? "black" : "transparent",
+
+            }}
+
+          >
+
+            <Text style={{ color: categoryId === c ? "white" : "black" }}>{c}</Text>
+
+          </Pressable>
+
+        ))}
+
+      </View>
+
+
+
+      <Text style={{ fontWeight: "700" }}>Region ID</Text>
+
+      <TextInput value={regionId} onChangeText={setRegionId} style={{ borderWidth: 1, padding: 12, borderRadius: 10 }} />
+
+
+
+      <Text style={{ fontWeight: "700" }}>Title</Text>
+
+      <TextInput value={title} onChangeText={setTitle} style={{ borderWidth: 1, padding: 12, borderRadius: 10 }} />
+
+
+
+      <Text style={{ fontWeight: "700" }}>Description</Text>
+
+      <TextInput
+
+        value={description}
+
+        onChangeText={setDescription}
+
+        multiline
+
+        style={{ borderWidth: 1, padding: 12, borderRadius: 10, minHeight: 100 }}
+
+      />
+
+
+
+      <Text style={{ fontWeight: "700" }}>Budget Range</Text>
+
+      <View style={{ flexDirection: "row", gap: 10 }}>
+
+        <TextInput value={budgetMin} onChangeText={setBudgetMin} keyboardType="number-pad"
+
+          style={{ flex: 1, borderWidth: 1, padding: 12, borderRadius: 10 }} />
+
+        <TextInput value={budgetMax} onChangeText={setBudgetMax} keyboardType="number-pad"
+
+          style={{ flex: 1, borderWidth: 1, padding: 12, borderRadius: 10 }} />
+
+      </View>
+
+
+
+      <Pressable
+
+        disabled={isSaving}
+
+        onPress={createJob}
+
+        style={{ backgroundColor: "black", padding: 14, borderRadius: 12, marginTop: 10, opacity: isSaving ? 0.6 : 1 }}
+
+      >
+
+        <Text style={{ color: "white", textAlign: "center", fontWeight: "700" }}>
+
+          {isSaving ? "Creating..." : "Create Job"}
+
+        </Text>
+
+      </Pressable>
+
+
+
+      <Text style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
+
+        Safety note: Workova recommends using in-app payments and messaging for protection.
+
+      </Text>
+
+    </View>
+
+  );
+
+}
+
+
+
+import { useState } from "react";
+
+import { View, Text, TextInput, Pressable, Alert } from "react-native";
+
+import * as Location from "expo-location";
+
+import { auth, db } from "../../src/firebase";
+
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+
+import { makeGeohash } from "../../src/geo";
+
+
+
+const CATS = [
+
+  "handyman",
+
+  "cleaning",
+
+  "hvac",
+
+  "remodeling",
+
+  "moving",
+
+  "tutoring",
+
+  "babysitting",
+
+] as const;
+
+
+
+export default function WorkerOnboarding() {
+
+  const user = auth.currentUser;
+
+
+
+  const [displayName, setDisplayName] = useState("");
+
+  const [bio, setBio] = useState("");
+
+  const [radiusKm, setRadiusKm] = useState("15");
+
+  const [selected, setSelected] = useState<typeof CATS[number][]>(["handyman"]);
+
+  const [saving, setSaving] = useState(false);
+
+
+
+  function toggle(cat: typeof CATS[number]) {
+
+    setSelected((prev) =>
+
+      prev.includes(cat) ? prev.filter((x) => x !== cat) : [...prev, cat]
+
+    );
+
+  }
+
+
+
+  async function save() {
+
+    if (!user) return;
+
+    if (!displayName.trim()) return Alert.alert("Missing", "Add your display name.");
+
+    if (selected.length === 0) return Alert.alert("Missing", "Select at least one category.");
+
+
+
+    setSaving(true);
+
+    try {
+
+      const perm = await Location.requestForegroundPermissionsAsync();
+
+      if (perm.status !== "granted") {
+
+        Alert.alert("Location required", "We need your location to match you with nearby jobs.");
+
+        return;
+
+      }
+
+
+
+      const pos = await Location.getCurrentPositionAsync({});
+
+      const lat = pos.coords.latitude;
+
+      const lng = pos.coords.longitude;
+
+      const geohash = makeGeohash(lat, lng);
+
+
+
+      await setDoc(
+
+        doc(db, "workers", user.uid),
+
+        {
+
+          userId: user.uid,
+
+          displayName: displayName.trim(),
+
+          bio: bio.trim(),
+
+          categories: selected,
+
+          serviceArea: {
+
+            lat,
+
+            lng,
+
+            geohash,
+
+            radiusKm: Number(radiusKm),
+
+          },
+
+          ratingAvg: 0,
+
+          ratingCount: 0,
+
+          createdAt: serverTimestamp(),
+
+          updatedAt: serverTimestamp(),
+
+        },
+
+        { merge: true }
+
+      );
+
+
+
+      Alert.alert("Saved", "Your worker profile is ready.");
+
+    } catch (e: any) {
+
+      Alert.alert("Error", e?.message ?? "Could not save profile");
+
+    } finally {
+
+      setSaving(false);
+
+    }
+
+  }
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 16, gap: 10 }}>
+
+      <Text style={{ fontSize: 20, fontWeight: "700" }}>Worker Setup</Text>
+
+      <Text>Build a trustworthy profile so customers can hire you safely.</Text>
+
+
+
+      <Text style={{ fontWeight: "700" }}>Display Name</Text>
+
+      <TextInput value={displayName} onChangeText={setDisplayName} style={{ borderWidth: 1, padding: 12, borderRadius: 10 }} />
+
+
+
+      <Text style={{ fontWeight: "700" }}>Bio</Text>
+
+      <TextInput value={bio} onChangeText={setBio} multiline style={{ borderWidth: 1, padding: 12, borderRadius: 10, minHeight: 90 }} />
+
+
+
+      <Text style={{ fontWeight: "700" }}>Service Radius (km)</Text>
+
+      <TextInput value={radiusKm} onChangeText={setRadiusKm} keyboardType="number-pad"
+
+        style={{ borderWidth: 1, padding: 12, borderRadius: 10 }} />
+
+
+
+      <Text style={{ fontWeight: "700" }}>Categories</Text>
+
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+
+        {CATS.map((c) => {
+
+          const on = selected.includes(c);
+
+          return (
+
+            <Pressable
+
+              key={c}
+
+              onPress={() => toggle(c)}
+
+              style={{
+
+                borderWidth: 1,
+
+                paddingHorizontal: 10,
+
+                paddingVertical: 8,
+
+                borderRadius: 999,
+
+                backgroundColor: on ? "black" : "transparent",
+
+              }}
+
+            >
+
+              <Text style={{ color: on ? "white" : "black" }}>{c}</Text>
+
+            </Pressable>
+
+          );
+
+        })}
+
+      </View>
+
+
+
+      <Pressable
+
+        onPress={save}
+
+        disabled={saving}
+
+        style={{ backgroundColor: "black", padding: 14, borderRadius: 12, marginTop: 10, opacity: saving ? 0.6 : 1 }}
+
+      >
+
+        <Text style={{ color: "white", textAlign: "center", fontWeight: "700" }}>
+
+          {saving ? "Saving..." : "Save Worker Profile"}
+
+        </Text>
+
+      </Pressable>
+
+
+
+      <Text style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
+
+        Compliance note: Some categories may require licensing in your region. Workova will restrict booking until verified.
+
+      </Text>
+
+    </View>
+
+  );
+
+}
+
+
+
+Step 6 — iOS “safe + legal” requirements you must implement before submission
+
+
+
+Must-have before App Store review (for your category)
+
+1. Report & Block system (UI + Firestore reports)
+
+2. Content moderation policy (at least basic terms in-app + on website)
+
+3. Privacy policy + App Store privacy answers consistent
+
+4. Apple Sign In (especially if you add Google login later)
+
+5. No misleading license claims
+
+• Only show “Licensed” badge if verified docs exist and approved
+
+6. In-app messaging (avoid pushing users off-platform)
+
+
+
+(We’ll add these next right after Offers + Messaging.)
+
+
+
+
+
+You are a senior staff-level mobile engineer and Firebase architect.
+
+
+
+Your task is to build a production-ready Expo React Native (TypeScript) iOS application named Workova using Expo + Firebase + Firestore + Firebase Storage.
+
+
+
+This is a two-sided marketplace app:
+
+
+
+• Customers can create jobs and hire workers
+
+• Workers can create profiles and accept jobs
+
+• System must be scalable, safe, and iOS compliant
+
+• No guessing, no fake placeholder logic, no broken imports
+
+• Code must run in Expo environment
+
+
+
+⸻
+
+
+
+GLOBAL ARCHITECTURE REQUIREMENTS
+
+
+
+Use:
+
+
+
+• Expo React Native with TypeScript
+
+• expo-router navigation
+
+• Firebase modular SDK (v9+)
+
+• Firestore database
+
+• Firebase Storage
+
+• Clean functional components
+
+• No deprecated Firebase syntax
+
+• No class components
+
+
+
+Project name: workova-mobile
+
+
+
+⸻
+
+
+
+INSTALL ALL REQUIRED DEPENDENCIES
+
+
+
+Ensure project uses:
+
+
+
+firebase
+
+zod
+
+geofire-common
+
+expo-location
+
+expo-image-picker
+
+react-native-safe-area-context
+
+react-native-screens
+
+
+
+⸻
+
+
+
+FIREBASE INITIALIZATION
+
+
+
+Create src/firebase.ts using ONLY modular Firebase SDK:
+
+• initializeApp
+
+• getAuth
+
+• getFirestore
+
+• getStorage
+
+
+
+Use environment variables:
+
+
+
+EXPO_PUBLIC_FIREBASE_API_KEY
+
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN
+
+EXPO_PUBLIC_FIREBASE_PROJECT_ID
+
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET
+
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+
+EXPO_PUBLIC_FIREBASE_APP_ID
+
+
+
+DO NOT hardcode secrets.
+
+
+
+⸻
+
+
+
+DATA MODEL (Firestore)
+
+
+
+Implement collections:
+
+
+
+users/{uid}
+
+workers/{uid}
+
+jobs/{jobId}
+
+offers/{offerId}
+
+chats/{chatId}
+
+chats/{chatId}/messages/{messageId}
+
+reports/{reportId}
+
+
+
+Each job must include:
+
+
+
+customerId
+
+categoryId
+
+regionId
+
+title
+
+description
+
+budgetMin
+
+budgetMax
+
+location { lat, lng, geohash }
+
+photos []
+
+status
+
+createdAt
+
+
+
+⸻
+
+
+
+SAFETY & LEGAL DESIGN RULES
+
+
+
+App must:
+
+
+
+• Never claim licensing without verification flag
+
+• Support report/block system
+
+• Prefer in-app communication
+
+• Use structured job categories
+
+• Prepare for license-required categories
+
+
+
+Workers may exist without license verification.
+
+
+
+⸻
+
+
+
+NAVIGATION STRUCTURE (expo-router)
+
+
+
+Create routes:
+
+
+
+app/_layout.tsx
+
+app/(auth)/index.tsx
+
+app/(tabs)/_layout.tsx
+
+app/(tabs)/index.tsx
+
+app/(tabs)/jobs.tsx
+
+app/(tabs)/jobs-create.tsx
+
+app/(tabs)/account.tsx
+
+app/(tabs)/worker-onboarding.tsx
+
+
+
+Tabs:
+
+
+
+Home
+
+Jobs
+
+Messages
+
+Account
+
+
+
+⸻
+
+
+
+AUTH SCREEN
+
+
+
+Implement email/password Firebase authentication:
+
+
+
+• Sign in
+
+• Sign up
+
+• On signup → create Firestore user doc
+
+• Redirect into tabs
+
+
+
+Use safe async handling.
+
+
+
+⸻
+
+
+
+JOB CREATION FLOW
+
+
+
+Implement screen allowing customer to:
+
+
+
+• Select category
+
+• Enter title
+
+• Enter description
+
+• Enter budget range
+
+• Request location permission
+
+• Store geohash
+
+• Write Firestore job document
+
+
+
+No broken permissions logic.
+
+
+
+⸻
+
+
+
+JOB LIST SCREEN
+
+
+
+Show jobs created by signed-in user using Firestore query + onSnapshot.
+
+
+
+Must auto update.
+
+
+
+⸻
+
+
+
+WORKER ONBOARDING
+
+
+
+Workers must be able to:
+
+
+
+• Set display name
+
+• Set bio
+
+• Select categories
+
+• Set service radius
+
+• Capture device location
+
+• Store geohash
+
+
+
+Store under workers/{uid}.
+
+
+
+⸻
+
+
+
+GEOHASH LOGIC
+
+
+
+Use geofire-common geohashForLocation.
+
+
+
+Do NOT write custom geohash math.
+
+
+
+⸻
+
+
+
+UI RULES
+
+
+
+Interface must be:
+
+
+
+• Minimal
+
+• Clean
+
+• White background
+
+• No random colors
+
+• No broken layout nesting
+
+
+
+⸻
+
+
+
+FIRESTORE WRITES
+
+
+
+Use ONLY:
+
+
+
+addDoc
+
+setDoc
+
+doc
+
+collection
+
+serverTimestamp
+
+
+
+No legacy Firebase syntax.
+
+
+
+⸻
+
+
+
+ERROR HANDLING
+
+
+
+All async logic must include try/catch.
+
+
+
+Never allow silent failures.
+
+
+
+⸻
+
+
+
+TYPES & VALIDATION
+
+
+
+Create:
+
+
+
+src/types.ts
+
+src/validators.ts
+
+src/geo.ts
+
+
+
+Use Zod for CreateJobSchema validation.
+
+
+
+⸻
+
+
+
+SECURITY MINDSET
+
+
+
+Prepare for Firestore security rules compatibility:
+
+
+
+• Users edit own data only
+
+• Workers edit own profile only
+
+
+
+⸻
+
+
+
+IOS COMPLIANCE CONSTRAINTS
+
+
+
+Avoid:
+
+
+
+• Direct external payments for digital features
+
+• Unsafe permission usage
+
+• Misleading claims
+
+
+
+Prepare for:
+
+
+
+• Apple Sign-In integration later
+
+• Privacy policy requirement
+
+
+
+⸻
+
+
+
+IMPLEMENT COMPLETE CODE
+
+
+
+Generate ALL files with working imports.
+
+
+
+No pseudo code. No missing modules.
+
+
+
+Ensure Expo app compiles.
+
+
+
+⸻
+
+
+
+⸻
+
+
+
+✅ REQUIRED FILE IMPLEMENTATIONS
+
+
+
+Generate working code for:
+
+
+
+• Firebase initialization
+
+• Auth screen
+
+• Tabs layout
+
+• Job creation
+
+• Job listing
+
+• Worker onboarding
+
+• Account screen
+
+
+
+Use functional React Native components.
+
+
+
+Use inline styles.
+
+
+
+⸻
+
+
+
+⸻
+
+
+
+END OF INSTRUCTIONS.
+
+
+
+Build the project completely.
+
+
+
+1. Worker Nearby Jobs feed (geohash radius query)
+
+2. Offers system
+
+3. Chat per job
+
+4. Report + Block flows
+
+5. License gating by category + region (UI + backend enforcement)
+
+6. Stripe via Firebase Functions (safe payment flow)
+
+
+
+Paste this into Replit AI (or use it as your build spec). It is written like a senior engineering directive with code.
+
+
+
+⸻
+
+
+
+✅ WORKOVA PHASE 2 MASTER PROMPT (PASTE INTO REPLIT)
+
+
+
+You are a world-class senior mobile engineer + Firebase architect.
+
+
+
+We already have: Expo + expo-router + Firebase Auth + Firestore + Storage, and working screens:
+
+• Auth
+
+• Tabs
+
+• Jobs list + Create job
+
+• Worker onboarding
+
+
+
+Now implement a real marketplace with the following features, FULLY WORKING, no placeholders, and compiling in Expo.
+
+
+
+STACK
+
+• Expo React Native (TypeScript)
+
+• expo-router
+
+• Firebase Auth
+
+• Firestore
+
+• Firebase Storage
+
+• Firebase Functions (Node 18+)
+
+• Stripe (PaymentIntents)
+
+• geofire-common for geohash radius queries
+
+• zod for validation
+
+
+
+IMPORTANT RULES
+
+• Do NOT guess. If something requires config, implement it and read from env variables.
+
+• Do NOT break existing screens.
+
+• All Firestore writes must be validated and safe.
+
+• Enforce safety + legal: licensed categories must be gated by region rules on BOTH client and server.
+
+
+
+⸻
+
+
+
+1) INSTALL DEPENDENCIES (MOBILE)
+
+
+
+cd workova-mobile
+
+npm i geofire-common zod
+
+npm i firebase
+
+
+
+npx expo install expo-location expo-image-picker
+
+
+
+2) UPDATE DATA MODEL (FIRESTORE)
+
+
+
+Ensure collections:
+
+
+
+users/{uid}
+
+• role: “customer”|“worker”|“both”|“admin”
+
+• verificationLevel: “basic”|“id_verified”|“background_checked”
+
+• blockedUsers: string[]  (uids)
+
+• createdAt
+
+
+
+workers/{uid}
+
+• userId
+
+• displayName
+
+• bio
+
+• categories: string[]
+
+• serviceArea: { lat, lng, geohash, radiusKm }
+
+• licenses: [{ categoryId, regionId, status: “pending”|“approved”|“rejected”, docUrl }]
+
+• ratingAvg, ratingCount
+
+• createdAt, updatedAt
+
+
+
+jobs/{jobId}
+
+• customerId
+
+• categoryId
+
+• regionId
+
+• title
+
+• description
+
+• budgetMin, budgetMax
+
+• location: { lat, lng, geohash }
+
+• photos: string[]
+
+• status: “open”|“offered”|“booked”|“in_progress”|“complete”|“cancelled”|“disputed”
+
+• createdAt
+
+
+
+offers/{offerId}
+
+• jobId
+
+• workerId
+
+• customerId
+
+• price
+
+• etaText
+
+• message
+
+• status: “sent”|“accepted”|“rejected”|“withdrawn”
+
+• createdAt
+
+
+
+chats/{chatId}
+
+• jobId
+
+• members: [customerId, workerId]
+
+• updatedAt
+
+• lastMessage
+
+
+
+chats/{chatId}/messages/{messageId}
+
+• senderId
+
+• text
+
+• createdAt
+
+
+
+reports/{reportId}
+
+• reporterId
+
+• reportedUserId
+
+• jobId?
+
+• reason
+
+• details
+
+• createdAt
+
+• status: “open”|“reviewing”|“resolved”
+
+
+
+categories/{categoryId}
+
+• name
+
+• licenseRequiredDefault (boolean)
+
+
+
+regions/{regionId}
+
+• country
+
+• stateOrProvince
+
+• licenseRules: { [categoryId]: boolean } // true if license required in this region
+
+
+
+⸻
+
+
+
+3) GEOHASH “NEARBY JOBS” QUERY
+
+
+
+Implement Worker Nearby Jobs feed using geofire-common:
+
+• geohashQueryBounds(center, radiusInM)
+
+• query Firestore jobs by:
+
+• where(“status”,”==”,“open”)
+
+• orderBy(“location.geohash”)
+
+• startAt/endAt per bound
+
+Then filter results by true distance using distanceBetween().
+
+
+
+IMPORTANT: Also filter out jobs where customer is blocked or worker is blocked:
+
+• Load current user blockedUsers
+
+• For each job, exclude if job.customerId in blockedUsers
+
+
+
+⸻
+
+
+
+4) OFFERS SYSTEM
+
+
+
+Worker sees a job -> can submit an offer:
+
+• price (number)
+
+• etaText (string e.g. “Today 4–6pm”)
+
+• message (optional)
+
+Write to offers collection with:
+
+• jobId, workerId, customerId, status=“sent”, createdAt
+
+
+
+Customer views job detail -> sees offers -> can accept:
+
+• On accept:
+
+• Update job.status = “booked”
+
+• Store acceptedOfferId on job
+
+• Update offer.status = “accepted”
+
+• Reject other offers (batch update)
+
+• Create / ensure chat thread for job members
+
+
+
+ENFORCE: Worker cannot offer if license is required and not approved.
+
+
+
+⸻
+
+
+
+5) CHAT PER JOB
+
+
+
+Implement:
+
+• Create chat doc when booking happens (or when customer accepts offer).
+
+• Chat screen:
+
+• list messages (onSnapshot)
+
+• send message (addDoc)
+
+• update chats/{chatId} with lastMessage + updatedAt on send
+
+
+
+ROUTES:
+
+• app/(tabs)/messages.tsx -> list chats for signed-in user
+
+• app/chat/[chatId].tsx -> chat thread
+
+
+
+All chat reads/writes must verify user is member.
+
+
+
+⸻
+
+
+
+6) REPORT + BLOCK FLOWS
+
+
+
+Implement block:
+
+• users/{uid}.blockedUsers arrayUnion(targetUid)
+
+• Chat list and Nearby Jobs must exclude blocked users
+
+• Job detail must hide “Offer” / “Message” if blocked
+
+
+
+Implement report:
+
+• Create report doc in reports collection
+
+• Provide UI on:
+
+• job detail screen
+
+• worker profile screen
+
+
+
+⸻
+
+
+
+7) LICENSE GATING (CLIENT + BACKEND)
+
+
+
+Client:
+
+• Before allowing “Send Offer”:
+
+• Look up region rules: regions/{regionId}.licenseRules[categoryId]
+
+• If license required:
+
+• worker doc must include licenses[] entry with status=“approved” for that category+region
+
+• If not approved -> block offer UI and display message: “License required in your region.”
+
+
+
+Backend enforcement:
+
+• Implement Firebase Function callable assertCanOffer(jobId):
+
+• checks auth
+
+• loads job
+
+• loads region rules
+
+• if license required -> ensure worker licenses approved
+
+• if ok -> return { ok: true }
+
+• In app, call this function before writing offer.
+
+• Also implement Cloud Function Firestore trigger on offers create:
+
+• if invalid -> delete offer + create report/log (or mark offer invalid)
+
+
+
+Goal: no illegal work facilitation.
+
+
+
+⸻
+
+
+
+8) STRIPE PAYMENT FLOW (SAFE)
+
+
+
+We accept payments for services via Stripe PaymentIntents created in Firebase Functions.
+
+
+
+Flow:
+
+1. Customer accepts offer -> app calls createPaymentIntent(jobId, offerId)
+
+2. Function validates:
+
+• caller is job.customer
+
+• job status is booked
+
+• offer accepted
+
+• amount matches offer.price
+
+3. Function creates Stripe PaymentIntent (amount in cents)
+
+4. App confirms payment client-side (Stripe React Native SDK can be added later; for now generate intent + store status)
+
+5. Stripe webhook confirms payment succeeded:
+
+• update payments collection + job.paymentStatus = “paid”
+
+
+
+IMPORTANT:
+
+• Do not use IAP for service payments (only for digital subscriptions).
+
+• Implement server-side only Stripe secret key.
+
+• Use env vars for Stripe keys.
+
+
+
+⸻
+
+
+
+9) ADD/UPDATE MOBILE ROUTES
+
+
+
+Add these screens:
+
+• app/(tabs)/nearby-jobs.tsx   (worker feed)
+
+• app/(tabs)/messages.tsx      (chat list)
+
+• app/job/[jobId].tsx          (job detail + offers list + accept + report)
+
+• app/job/[jobId]-offer.tsx    (worker submit offer)
+
+• app/chat/[chatId].tsx        (chat screen)
+
+
+
+Update Tabs layout to include Nearby Jobs:
+
+• show Nearby Jobs tab only if role includes worker; otherwise hide or keep but redirect.
+
+
+
+⸻
+
+
+
+10) REQUIRED CODE FILES (PASTE/CREATE EXACTLY)
+
+
+
+Create/replace these files with working code:
+
+
+
+src/geoQueries.ts
+
+• getNearbyOpenJobs(centerLatLng, radiusKm) returning Job[] using geohashQueryBounds + distanceBetween filter.
+
+
+
+src/license.ts
+
+• function licenseRequired(regionId, categoryId)
+
+• function workerHasApprovedLicense(workerDoc, regionId, categoryId)
+
+
+
+src/blocking.ts
+
+• helpers to check blocked relations
+
+
+
+app/(tabs)/nearby-jobs.tsx
+
+• pulls worker service area and shows nearby jobs feed
+
+• click job -> navigate to /job/[jobId]
+
+
+
+app/job/[jobId].tsx
+
+• job detail
+
+• list offers
+
+• accept offer (customer only)
+
+• report user
+
+• open chat if booked
+
+
+
+app/job/[jobId]-offer.tsx
+
+• offer creation form (worker only)
+
+• calls assertCanOffer() function first
+
+• writes offer doc
+
+
+
+app/(tabs)/messages.tsx
+
+• lists chats where member contains current uid
+
+
+
+app/chat/[chatId].tsx
+
+• message list + send
+
+
+
+⸻
+
+
+
+11) FIREBASE FUNCTIONS SETUP
+
+
+
+Create a functions folder at repo root (or in separate Replit workspace if needed) with:
+
+• functions/package.json
+
+• functions/tsconfig.json
+
+• functions/src/index.ts
+
+
+
+Node 18 runtime.
+
+
+
+Implement functions:
+
+
+
+A) callable: assertCanOffer(jobId)
+
+B) callable: createPaymentIntent(jobId, offerId)
+
+C) webhook: stripeWebhook (Express handler)
+
+D) trigger: onOfferCreate validate license + delete invalid offers
+
+
+
+Use env config:
+
+• STRIPE_SECRET_KEY
+
+• STRIPE_WEBHOOK_SECRET
+
+
+
+⸻
+
+
+
+12) FIRESTORE SECURITY RULES UPDATE
+
+
+
+Update rules to enforce:
+
+• only worker can create offers where workerId == auth.uid
+
+• only members can read chats/messages
+
+• only customer can update job booking status
+
+• reports create allowed for signed-in, read admin only
+
+• users can only update their own blockedUsers
+
+
+
+⸻
+
+
+
+13) DELIVERABLE
+
+
+
+After implementing, ensure:
+
+• Expo app runs with no runtime errors
+
+• Worker can view Nearby Jobs
+
+• Worker can submit offers only when allowed by license rules
+
+• Customer can accept offer -> chat created
+
+• Messages work
+
+• Block/report work
+
+• Stripe Functions compile (even if Stripe RN SDK not installed yet)
+
+
+
+END.
+
+
+
+⸻
+
+
+
+✅ REQUIRED IMPLEMENTATION CODE (DROP-IN)
+
+
+
+Below are key files you must create exactly as written.
+
+
+
+import { collection, getDocs, query, where, orderBy, startAt, endAt } from "firebase/firestore";
+
+import { geohashQueryBounds, distanceBetween } from "geofire-common";
+
+import { db } from "./firebase";
+
+
+
+export type LatLng = { lat: number; lng: number };
+
+
+
+export async function getNearbyOpenJobs(center: LatLng, radiusKm: number) {
+
+  const centerArr: [number, number] = [center.lat, center.lng];
+
+  const radiusM = radiusKm * 1000;
+
+
+
+  const bounds = geohashQueryBounds(centerArr, radiusM);
+
+  const promises = bounds.map((b) => {
+
+    const q = query(
+
+      collection(db, "jobs"),
+
+      where("status", "==", "open"),
+
+      orderBy("location.geohash"),
+
+      startAt(b[0]),
+
+      endAt(b[1])
+
+    );
+
+    return getDocs(q);
+
+  });
+
+
+
+  const snapshots = await Promise.all(promises);
+
+
+
+  const matching: any[] = [];
+
+  const seen = new Set<string>();
+
+
+
+  for (const snap of snapshots) {
+
+    for (const doc of snap.docs) {
+
+      if (seen.has(doc.id)) continue;
+
+      seen.add(doc.id);
+
+
+
+      const d = doc.data() as any;
+
+      const lat = d?.location?.lat;
+
+      const lng = d?.location?.lng;
+
+      if (typeof lat !== "number" || typeof lng !== "number") continue;
+
+
+
+      const distKm = distanceBetween([lat, lng], centerArr);
+
+      if (distKm <= radiusKm) {
+
+        matching.push({ id: doc.id, ...d, _distKm: distKm });
+
+      }
+
+    }
+
+  }
+
+
+
+  matching.sort((a, b) => a._distKm - b._distKm);
+
+  return matching;
+
+}
+
+
+
+import { collection, getDocs, query, where, orderBy, startAt, endAt } from "firebase/firestore";
+
+import { geohashQueryBounds, distanceBetween } from "geofire-common";
+
+import { db } from "./firebase";
+
+
+
+export type LatLng = { lat: number; lng: number };
+
+
+
+export async function getNearbyOpenJobs(center: LatLng, radiusKm: number) {
+
+  const centerArr: [number, number] = [center.lat, center.lng];
+
+  const radiusM = radiusKm * 1000;
+
+
+
+  const bounds = geohashQueryBounds(centerArr, radiusM);
+
+  const promises = bounds.map((b) => {
+
+    const q = query(
+
+      collection(db, "jobs"),
+
+      where("status", "==", "open"),
+
+      orderBy("location.geohash"),
+
+      startAt(b[0]),
+
+      endAt(b[1])
+
+    );
+
+    return getDocs(q);
+
+  });
+
+
+
+  const snapshots = await Promise.all(promises);
+
+
+
+  const matching: any[] = [];
+
+  const seen = new Set<string>();
+
+
+
+  for (const snap of snapshots) {
+
+    for (const doc of snap.docs) {
+
+      if (seen.has(doc.id)) continue;
+
+      seen.add(doc.id);
+
+
+
+      const d = doc.data() as any;
+
+      const lat = d?.location?.lat;
+
+      const lng = d?.location?.lng;
+
+      if (typeof lat !== "number" || typeof lng !== "number") continue;
+
+
+
+      const distKm = distanceBetween([lat, lng], centerArr);
+
+      if (distKm <= radiusKm) {
+
+        matching.push({ id: doc.id, ...d, _distKm: distKm });
+
+      }
+
+    }
+
+  }
+
+
+
+  matching.sort((a, b) => a._distKm - b._distKm);
+
+  return matching;
+
+}
+
+
+
+import { doc, getDoc } from "firebase/firestore";
+
+import { db } from "./firebase";
+
+
+
+export async function isLicenseRequired(regionId: string, categoryId: string): Promise<boolean> {
+
+  const snap = await getDoc(doc(db, "regions", regionId));
+
+  if (!snap.exists()) return false;
+
+  const rules = (snap.data() as any).licenseRules || {};
+
+  return Boolean(rules[categoryId]);
+
+}
+
+
+
+export function workerHasApprovedLicense(workerDoc: any, regionId: string, categoryId: string): boolean {
+
+  const licenses = workerDoc?.licenses || [];
+
+  return licenses.some(
+
+    (l: any) =>
+
+      l?.regionId === regionId &&
+
+      l?.categoryId === categoryId &&
+
+      l?.status === "approved"
+
+  );
+
+}
+
+
+
+export function isBlocked(blockedUsers: string[] | undefined, otherUid: string) {
+
+  return Array.isArray(blockedUsers) && blockedUsers.includes(otherUid);
+
+}
+
+
+
+import { useEffect, useState } from "react";
+
+import { View, Text, FlatList, Pressable } from "react-native";
+
+import { auth, db } from "../../src/firebase";
+
+import { doc, getDoc } from "firebase/firestore";
+
+import { getNearbyOpenJobs } from "../../src/geoQueries";
+
+import { router } from "expo-router";
+
+import { isBlocked } from "../../src/blocking";
+
+
+
+export default function NearbyJobs() {
+
+  const user = auth.currentUser;
+
+  const [items, setItems] = useState<any[]>([]);
+
+  const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
+
+  const [loading, setLoading] = useState(true);
+
+
+
+  useEffect(() => {
+
+    (async () => {
+
+      if (!user) return;
+
+
+
+      const userSnap = await getDoc(doc(db, "users", user.uid));
+
+      setBlockedUsers((userSnap.data() as any)?.blockedUsers ?? []);
+
+
+
+      const workerSnap = await getDoc(doc(db, "workers", user.uid));
+
+      const worker = workerSnap.data() as any;
+
+
+
+      const area = worker?.serviceArea;
+
+      if (!area?.lat || !area?.lng || !area?.radiusKm) {
+
+        setItems([]);
+
+        setLoading(false);
+
+        return;
+
+      }
+
+
+
+      const jobs = await getNearbyOpenJobs({ lat: area.lat, lng: area.lng }, Number(area.radiusKm));
+
+
+
+      const filtered = jobs.filter((j: any) => !isBlocked(blockedUsers, j.customerId));
+
+      setItems(filtered);
+
+      setLoading(false);
+
+    })();
+
+  }, [user]);
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 16 }}>
+
+      <Text style={{ fontSize: 20, fontWeight: "700" }}>Nearby Jobs</Text>
+
+
+
+      {loading ? <Text style={{ marginTop: 10 }}>Loading…</Text> : null}
+
+      {!loading && items.length === 0 ? (
+
+        <Text style={{ marginTop: 10 }}>No nearby open jobs yet.</Text>
+
+      ) : (
+
+        <FlatList
+
+          style={{ marginTop: 10 }}
+
+          data={items}
+
+          keyExtractor={(x) => x.id}
+
+          renderItem={({ item }) => (
+
+            <Pressable
+
+              onPress={() => router.push(`/job/${item.id}`)}
+
+              style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 10 }}
+
+            >
+
+              <Text style={{ fontWeight: "700" }}>{item.title}</Text>
+
+              <Text>{item.categoryId} • {item.regionId}</Text>
+
+              <Text>Budget: ${item.budgetMin}–${item.budgetMax}</Text>
+
+              <Text>Distance: {item._distKm?.toFixed(1)} km</Text>
+
+            </Pressable>
+
+          )}
+
+        />
+
+      )}
+
+    </View>
+
+  );
+
+}
+
+
+
+0) One-time: update Tabs to include Nearby Jobs + Messages
+
+
+
+import { Tabs } from "expo-router";
+
+
+
+export default function TabsLayout() {
+
+  return (
+
+    <Tabs screenOptions={{ headerShown: true }}>
+
+      <Tabs.Screen name="index" options={{ title: "Home" }} />
+
+      <Tabs.Screen name="jobs" options={{ title: "Jobs" }} />
+
+      <Tabs.Screen name="nearby-jobs" options={{ title: "Nearby" }} />
+
+      <Tabs.Screen name="messages" options={{ title: "Messages" }} />
+
+      <Tabs.Screen name="account" options={{ title: "Account" }} />
+
+    </Tabs>
+
+  );
+
+}
+
+
+
+BUNDLE 1 — OFFERS + JOB DETAIL
+
+
+
+import { useEffect, useMemo, useState } from "react";
+
+import { View, Text, Pressable, FlatList, Alert } from "react-native";
+
+import { useLocalSearchParams, router } from "expo-router";
+
+import { auth, db } from "../../src/firebase";
+
+import {
+
+  doc,
+
+  getDoc,
+
+  onSnapshot,
+
+  collection,
+
+  query,
+
+  where,
+
+  orderBy,
+
+  updateDoc,
+
+  writeBatch,
+
+  serverTimestamp,
+
+  setDoc,
+
+} from "firebase/firestore";
+
+import { isBlocked } from "../../src/blocking";
+
+
+
+type JobDoc = any;
+
+
+
+async function ensureChat(jobId: string, customerId: string, workerId: string) {
+
+  // deterministic chatId prevents duplicates
+
+  const chatId = `job_${jobId}_${customerId}_${workerId}`;
+
+  const chatRef = doc(db, "chats", chatId);
+
+  const snap = await getDoc(chatRef);
+
+  if (!snap.exists()) {
+
+    await setDoc(chatRef, {
+
+      jobId,
+
+      members: [customerId, workerId],
+
+      updatedAt: serverTimestamp(),
+
+      lastMessage: "",
+
+    });
+
+  }
+
+  return chatId;
+
+}
+
+
+
+export default function JobDetail() {
+
+  const { jobId } = useLocalSearchParams<{ jobId: string }>();
+
+  const user = auth.currentUser;
+
+
+
+  const [job, setJob] = useState<JobDoc | null>(null);
+
+  const [offers, setOffers] = useState<any[]>([]);
+
+  const [me, setMe] = useState<any>(null);
+
+  const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
+
+  const [workerDoc, setWorkerDoc] = useState<any>(null); // if viewing as worker
+
+
+
+  const isCustomer = useMemo(() => job && user && job.customerId === user.uid, [job, user]);
+
+  const isWorkerViewer = useMemo(() => Boolean(user && workerDoc), [user, workerDoc]);
+
+
+
+  useEffect(() => {
+
+    if (!user) return;
+
+    (async () => {
+
+      const meSnap = await getDoc(doc(db, "users", user.uid));
+
+      setMe(meSnap.data() ?? null);
+
+      setBlockedUsers((meSnap.data() as any)?.blockedUsers ?? []);
+
+
+
+      const wSnap = await getDoc(doc(db, "workers", user.uid));
+
+      setWorkerDoc(wSnap.exists() ? wSnap.data() : null);
+
+    })();
+
+  }, [user]);
+
+
+
+  useEffect(() => {
+
+    if (!jobId) return;
+
+    const unsub = onSnapshot(doc(db, "jobs", String(jobId)), (snap) => {
+
+      setJob(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+
+    });
+
+    return () => unsub();
+
+  }, [jobId]);
+
+
+
+  useEffect(() => {
+
+    if (!jobId) return;
+
+    const q = query(
+
+      collection(db, "offers"),
+
+      where("jobId", "==", String(jobId)),
+
+      orderBy("createdAt", "desc")
+
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+
+      setOffers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+
+    });
+
+    return () => unsub();
+
+  }, [jobId]);
+
+
+
+  const blocked = useMemo(() => {
+
+    if (!job || !blockedUsers?.length) return false;
+
+    return isBlocked(blockedUsers, job.customerId);
+
+  }, [job, blockedUsers]);
+
+
+
+  async function acceptOffer(offer: any) {
+
+    if (!user || !job) return;
+
+    if (job.customerId !== user.uid) {
+
+      Alert.alert("Not allowed", "Only the customer can accept offers.");
+
+      return;
+
+    }
+
+    if (job.status !== "open" && job.status !== "offered") {
+
+      Alert.alert("Job not open", "This job is not available for booking.");
+
+      return;
+
+    }
+
+
+
+    // Safety: do not allow booking blocked users
+
+    if (isBlocked(blockedUsers, offer.workerId)) {
+
+      Alert.alert("Blocked", "You blocked this worker.");
+
+      return;
+
+    }
+
+
+
+    try {
+
+      const batch = writeBatch(db);
+
+
+
+      const jobRef = doc(db, "jobs", job.id);
+
+      batch.update(jobRef, {
+
+        status: "booked",
+
+        acceptedOfferId: offer.id,
+
+        bookedWorkerId: offer.workerId,
+
+        bookedAt: serverTimestamp(),
+
+      });
+
+
+
+      const acceptedRef = doc(db, "offers", offer.id);
+
+      batch.update(acceptedRef, { status: "accepted", acceptedAt: serverTimestamp() });
+
+
+
+      // reject other offers
+
+      for (const o of offers) {
+
+        if (o.id === offer.id) continue;
+
+        batch.update(doc(db, "offers", o.id), { status: "rejected", rejectedAt: serverTimestamp() });
+
+      }
+
+
+
+      await batch.commit();
+
+
+
+      const chatId = await ensureChat(job.id, job.customerId, offer.workerId);
+
+      Alert.alert("Booked", "Offer accepted. Chat created.");
+
+      router.push(`/chat/${chatId}`);
+
+    } catch (e: any) {
+
+      Alert.alert("Error", e?.message ?? "Could not accept offer");
+
+    }
+
+  }
+
+
+
+  async function reportUser(targetUid: string) {
+
+    if (!user || !job) return;
+
+    router.push({
+
+      pathname: "/report",
+
+      params: { jobId: job.id, reportedUserId: targetUid },
+
+    });
+
+  }
+
+
+
+  async function blockUser(targetUid: string) {
+
+    if (!user) return;
+
+    router.push({ pathname: "/block", params: { targetUid } });
+
+  }
+
+
+
+  if (!job) {
+
+    return (
+
+      <View style={{ flex: 1, padding: 16 }}>
+
+        <Text>Loading job…</Text>
+
+      </View>
+
+    );
+
+  }
+
+
+
+  const canOfferAsWorker =
+
+    user &&
+
+    workerDoc &&
+
+    job.status === "open" &&
+
+    !blocked &&
+
+    !isBlocked(blockedUsers, job.customerId) &&
+
+    job.customerId !== user.uid;
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 16, gap: 10 }}>
+
+      <Text style={{ fontSize: 20, fontWeight: "800" }}>{job.title}</Text>
+
+      <Text>{job.categoryId} • {job.regionId}</Text>
+
+      <Text style={{ marginTop: 4 }}>{job.description}</Text>
+
+      <Text style={{ marginTop: 4, fontWeight: "700" }}>
+
+        Budget: ${job.budgetMin}–${job.budgetMax}
+
+      </Text>
+
+      <Text>Status: {job.status}</Text>
+
+
+
+      {canOfferAsWorker ? (
+
+        <Pressable
+
+          onPress={() => router.push(`/job/${job.id}-offer`)}
+
+          style={{ backgroundColor: "black", padding: 14, borderRadius: 12, marginTop: 8 }}
+
+        >
+
+          <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+
+            Send Offer
+
+          </Text>
+
+        </Pressable>
+
+      ) : null}
+
+
+
+      <View style={{ marginTop: 12, flexDirection: "row", gap: 10 }}>
+
+        <Pressable
+
+          onPress={() => reportUser(job.customerId)}
+
+          style={{ borderWidth: 1, padding: 12, borderRadius: 12, flex: 1 }}
+
+        >
+
+          <Text style={{ textAlign: "center" }}>Report</Text>
+
+        </Pressable>
+
+        <Pressable
+
+          onPress={() => blockUser(job.customerId)}
+
+          style={{ borderWidth: 1, padding: 12, borderRadius: 12, flex: 1 }}
+
+        >
+
+          <Text style={{ textAlign: "center" }}>Block</Text>
+
+        </Pressable>
+
+      </View>
+
+
+
+      <Text style={{ marginTop: 16, fontSize: 16, fontWeight: "800" }}>Offers</Text>
+
+
+
+      {offers.length === 0 ? (
+
+        <Text>No offers yet.</Text>
+
+      ) : (
+
+        <FlatList
+
+          data={offers}
+
+          keyExtractor={(x) => x.id}
+
+          renderItem={({ item }) => (
+
+            <View style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 10 }}>
+
+              <Text style={{ fontWeight: "800" }}>${item.price}</Text>
+
+              <Text>ETA: {item.etaText}</Text>
+
+              {item.message ? <Text>{item.message}</Text> : null}
+
+              <Text>Status: {item.status}</Text>
+
+
+
+              {isCustomer && (job.status === "open" || job.status === "offered") && item.status === "sent" ? (
+
+                <Pressable
+
+                  onPress={() => acceptOffer(item)}
+
+                  style={{ backgroundColor: "black", padding: 12, borderRadius: 12, marginTop: 8 }}
+
+                >
+
+                  <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+
+                    Accept Offer
+
+                  </Text>
+
+                </Pressable>
+
+              ) : null}
+
+
+
+              {isCustomer ? (
+
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+
+                  <Pressable
+
+                    onPress={() => reportUser(item.workerId)}
+
+                    style={{ borderWidth: 1, padding: 10, borderRadius: 12, flex: 1 }}
+
+                  >
+
+                    <Text style={{ textAlign: "center" }}>Report worker</Text>
+
+                  </Pressable>
+
+                  <Pressable
+
+                    onPress={() => blockUser(item.workerId)}
+
+                    style={{ borderWidth: 1, padding: 10, borderRadius: 12, flex: 1 }}
+
+                  >
+
+                    <Text style={{ textAlign: "center" }}>Block worker</Text>
+
+                  </Pressable>
+
+                </View>
+
+              ) : null}
+
+            </View>
+
+          )}
+
+        />
+
+      )}
+
+
+
+      {/* If booked, show open chat */}
+
+      {job.status === "booked" && user && (job.customerId === user.uid || job.bookedWorkerId === user.uid) ? (
+
+        <Pressable
+
+          onPress={() => router.push(`/chat/job_${job.id}_${job.customerId}_${job.bookedWorkerId}`)}
+
+          style={{ backgroundColor: "black", padding: 14, borderRadius: 12 }}
+
+        >
+
+          <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+
+            Open Chat
+
+          </Text>
+
+        </Pressable>
+
+      ) : null}
+
+    </View>
+
+  );
+
+}
+
+
+
+✅ Create app/job/[jobId]-offer.tsx
+
+
+
+This enforces license gating by calling a Firebase Function assertCanOffer(jobId) before writing.
+
+
+
+import { useEffect, useState } from "react";
+
+import { View, Text, TextInput, Pressable, Alert } from "react-native";
+
+import { useLocalSearchParams, router } from "expo-router";
+
+import { auth, db } from "../../src/firebase";
+
+import { addDoc, collection, doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+
+import { getFunctions, httpsCallable } from "firebase/functions";
+
+import { initializeApp } from "firebase/app";
+
+import { getApp } from "firebase/app";
+
+
+
+export default function OfferCreate() {
+
+  const { jobId } = useLocalSearchParams<{ jobId: string }>();
+
+  const user = auth.currentUser;
+
+
+
+  const [price, setPrice] = useState("150");
+
+  const [etaText, setEtaText] = useState("Today 4–6pm");
+
+  const [message, setMessage] = useState("I can do this quickly and professionally.");
+
+  const [job, setJob] = useState<any>(null);
+
+  const [saving, setSaving] = useState(false);
+
+
+
+  useEffect(() => {
+
+    (async () => {
+
+      if (!jobId) return;
+
+      const snap = await getDoc(doc(db, "jobs", String(jobId)));
+
+      setJob(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+
+    })();
+
+  }, [jobId]);
+
+
+
+  async function submit() {
+
+    if (!user) return;
+
+    if (!job) return;
+
+
+
+    const p = Number(price);
+
+    if (!Number.isFinite(p) || p <= 0) return Alert.alert("Invalid", "Enter a valid price.");
+
+
+
+    setSaving(true);
+
+    try {
+
+      // License + legal gate enforced on backend
+
+      const functions = getFunctions(getApp());
+
+      const assertCanOffer = httpsCallable(functions, "assertCanOffer");
+
+      const res: any = await assertCanOffer({ jobId: job.id });
+
+
+
+      if (!res?.data?.ok) {
+
+        Alert.alert("Not allowed", res?.data?.reason ?? "You cannot offer on this job.");
+
+        return;
+
+      }
+
+
+
+      await addDoc(collection(db, "offers"), {
+
+        jobId: job.id,
+
+        workerId: user.uid,
+
+        customerId: job.customerId,
+
+        price: p,
+
+        etaText: etaText.trim(),
+
+        message: message.trim(),
+
+        status: "sent",
+
+        createdAt: serverTimestamp(),
+
+      });
+
+
+
+      // Update job status to offered if it was open
+
+      if (job.status === "open") {
+
+        await updateDoc(doc(db, "jobs", job.id), { status: "offered" });
+
+      }
+
+
+
+      Alert.alert("Sent", "Offer sent to customer.");
+
+      router.back();
+
+    } catch (e: any) {
+
+      Alert.alert("Error", e?.message ?? "Could not send offer");
+
+    } finally {
+
+      setSaving(false);
+
+    }
+
+  }
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 16, gap: 10 }}>
+
+      <Text style={{ fontSize: 20, fontWeight: "800" }}>Send Offer</Text>
+
+      {job ? (
+
+        <Text style={{ opacity: 0.8 }}>{job.title} • Budget ${job.budgetMin}–${job.budgetMax}</Text>
+
+      ) : (
+
+        <Text>Loading job…</Text>
+
+      )}
+
+
+
+      <Text style={{ fontWeight: "800" }}>Price</Text>
+
+      <TextInput value={price} onChangeText={setPrice} keyboardType="number-pad"
+
+        style={{ borderWidth: 1, padding: 12, borderRadius: 10 }} />
+
+
+
+      <Text style={{ fontWeight: "800" }}>ETA</Text>
+
+      <TextInput value={etaText} onChangeText={setEtaText}
+
+        style={{ borderWidth: 1, padding: 12, borderRadius: 10 }} />
+
+
+
+      <Text style={{ fontWeight: "800" }}>Message</Text>
+
+      <TextInput value={message} onChangeText={setMessage} multiline
+
+        style={{ borderWidth: 1, padding: 12, borderRadius: 10, minHeight: 90 }} />
+
+
+
+      <Pressable
+
+        disabled={saving}
+
+        onPress={submit}
+
+        style={{ backgroundColor: "black", padding: 14, borderRadius: 12, marginTop: 10, opacity: saving ? 0.6 : 1 }}
+
+      >
+
+        <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+
+          {saving ? "Sending…" : "Send Offer"}
+
+        </Text>
+
+      </Pressable>
+
+    </View>
+
+  );
+
+}
+
+
+
+import { useEffect, useMemo, useState } from "react";
+
+import { View, Text, FlatList, Pressable } from "react-native";
+
+import { auth, db } from "../../src/firebase";
+
+import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
+
+import { router } from "expo-router";
+
+
+
+export default function Messages() {
+
+  const user = auth.currentUser;
+
+  const [chats, setChats] = useState<any[]>([]);
+
+
+
+  const q = useMemo(() => {
+
+    if (!user) return null;
+
+    return query(
+
+      collection(db, "chats"),
+
+      where("members", "array-contains", user.uid),
+
+      orderBy("updatedAt", "desc")
+
+    );
+
+  }, [user]);
+
+
+
+  useEffect(() => {
+
+    if (!q) return;
+
+    const unsub = onSnapshot(q, (snap) => {
+
+      setChats(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+
+    });
+
+    return () => unsub();
+
+  }, [q]);
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 16 }}>
+
+      <Text style={{ fontSize: 20, fontWeight: "800" }}>Messages</Text>
+
+
+
+      {chats.length === 0 ? (
+
+        <Text style={{ marginTop: 10 }}>No chats yet.</Text>
+
+      ) : (
+
+        <FlatList
+
+          style={{ marginTop: 10 }}
+
+          data={chats}
+
+          keyExtractor={(x) => x.id}
+
+          renderItem={({ item }) => (
+
+            <Pressable
+
+              onPress={() => router.push(`/chat/${item.id}`)}
+
+              style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 10 }}
+
+            >
+
+              <Text style={{ fontWeight: "800" }}>Job: {item.jobId}</Text>
+
+              <Text numberOfLines={1} style={{ opacity: 0.8 }}>
+
+                {item.lastMessage || "No messages yet"}
+
+              </Text>
+
+            </Pressable>
+
+          )}
+
+        />
+
+      )}
+
+    </View>
+
+  );
+
+}
+
+
+
+✅ Create app/chat/[chatId].tsx
+
+
+
+import { useEffect, useMemo, useState } from "react";
+
+import { View, Text, FlatList, TextInput, Pressable, Alert } from "react-native";
+
+import { useLocalSearchParams, router } from "expo-router";
+
+import { auth, db } from "../../src/firebase";
+
+import {
+
+  addDoc,
+
+  collection,
+
+  doc,
+
+  getDoc,
+
+  onSnapshot,
+
+  orderBy,
+
+  query,
+
+  serverTimestamp,
+
+  updateDoc,
+
+} from "firebase/firestore";
+
+
+
+export default function ChatThread() {
+
+  const { chatId } = useLocalSearchParams<{ chatId: string }>();
+
+  const user = auth.currentUser;
+
+
+
+  const [chat, setChat] = useState<any>(null);
+
+  const [messages, setMessages] = useState<any[]>([]);
+
+  const [text, setText] = useState("");
+
+
+
+  useEffect(() => {
+
+    (async () => {
+
+      if (!chatId || !user) return;
+
+      const snap = await getDoc(doc(db, "chats", String(chatId)));
+
+      if (!snap.exists()) {
+
+        Alert.alert("Not found", "Chat does not exist.");
+
+        router.back();
+
+        return;
+
+      }
+
+      const d = snap.data();
+
+      if (!d?.members?.includes(user.uid)) {
+
+        Alert.alert("Not allowed", "You are not a member of this chat.");
+
+        router.back();
+
+        return;
+
+      }
+
+      setChat({ id: snap.id, ...d });
+
+    })();
+
+  }, [chatId, user]);
+
+
+
+  useEffect(() => {
+
+    if (!chatId) return;
+
+    const q = query(
+
+      collection(db, "chats", String(chatId), "messages"),
+
+      orderBy("createdAt", "asc")
+
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+
+      setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+
+    });
+
+    return () => unsub();
+
+  }, [chatId]);
+
+
+
+  async function send() {
+
+    if (!user || !chatId) return;
+
+    const t = text.trim();
+
+    if (!t) return;
+
+
+
+    setText("");
+
+    try {
+
+      await addDoc(collection(db, "chats", String(chatId), "messages"), {
+
+        senderId: user.uid,
+
+        text: t,
+
+        createdAt: serverTimestamp(),
+
+      });
+
+
+
+      await updateDoc(doc(db, "chats", String(chatId)), {
+
+        lastMessage: t,
+
+        updatedAt: serverTimestamp(),
+
+      });
+
+    } catch (e: any) {
+
+      Alert.alert("Error", e?.message ?? "Could not send message");
+
+    }
+
+  }
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 16 }}>
+
+      <Text style={{ fontSize: 18, fontWeight: "800" }}>Chat</Text>
+
+
+
+      <FlatList
+
+        style={{ marginTop: 10 }}
+
+        data={messages}
+
+        keyExtractor={(x) => x.id}
+
+        renderItem={({ item }) => (
+
+          <View style={{ marginBottom: 10 }}>
+
+            <Text style={{ fontWeight: "800" }}>
+
+              {item.senderId === user?.uid ? "You" : "Them"}
+
+            </Text>
+
+            <Text>{item.text}</Text>
+
+          </View>
+
+        )}
+
+      />
+
+
+
+      <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+
+        <TextInput
+
+          value={text}
+
+          onChangeText={setText}
+
+          placeholder="Message…"
+
+          style={{ flex: 1, borderWidth: 1, padding: 12, borderRadius: 12 }}
+
+        />
+
+        <Pressable onPress={send} style={{ backgroundColor: "black", padding: 12, borderRadius: 12 }}>
+
+          <Text style={{ color: "white", fontWeight: "800" }}>Send</Text>
+
+        </Pressable>
+
+      </View>
+
+    </View>
+
+  );
+
+}
+
+
+
+BUNDLE 3 — REPORT + BLOCK FLOWS
+
+
+
+We’ll add two simple screens: /report and /block.
+
+
+
+import { useState } from "react";
+
+import { View, Text, TextInput, Pressable, Alert } from "react-native";
+
+import { useLocalSearchParams, router } from "expo-router";
+
+import { auth, db } from "../src/firebase";
+
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+
+
+
+export default function Report() {
+
+  const user = auth.currentUser;
+
+  const { jobId, reportedUserId } = useLocalSearchParams<{ jobId?: string; reportedUserId?: string }>();
+
+
+
+  const [reason, setReason] = useState("Safety / fraud / harassment");
+
+  const [details, setDetails] = useState("");
+
+  const [saving, setSaving] = useState(false);
+
+
+
+  async function submit() {
+
+    if (!user) return;
+
+    if (!reportedUserId) return Alert.alert("Missing", "No user to report.");
+
+
+
+    setSaving(true);
+
+    try {
+
+      await addDoc(collection(db, "reports"), {
+
+        reporterId: user.uid,
+
+        reportedUserId: String(reportedUserId),
+
+        jobId: jobId ? String(jobId) : null,
+
+        reason: reason.trim(),
+
+        details: details.trim(),
+
+        status: "open",
+
+        createdAt: serverTimestamp(),
+
+      });
+
+
+
+      Alert.alert("Submitted", "Thanks. Our team will review this report.");
+
+      router.back();
+
+    } catch (e: any) {
+
+      Alert.alert("Error", e?.message ?? "Could not submit report");
+
+    } finally {
+
+      setSaving(false);
+
+    }
+
+  }
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 16, gap: 10 }}>
+
+      <Text style={{ fontSize: 20, fontWeight: "800" }}>Report</Text>
+
+
+
+      <Text style={{ fontWeight: "800" }}>Reason</Text>
+
+      <TextInput value={reason} onChangeText={setReason} style={{ borderWidth: 1, padding: 12, borderRadius: 10 }} />
+
+
+
+      <Text style={{ fontWeight: "800" }}>Details</Text>
+
+      <TextInput
+
+        value={details}
+
+        onChangeText={setDetails}
+
+        multiline
+
+        style={{ borderWidth: 1, padding: 12, borderRadius: 10, minHeight: 100 }}
+
+        placeholder="Describe what happened…"
+
+      />
+
+
+
+      <Pressable
+
+        disabled={saving}
+
+        onPress={submit}
+
+        style={{ backgroundColor: "black", padding: 14, borderRadius: 12, opacity: saving ? 0.6 : 1 }}
+
+      >
+
+        <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+
+          {saving ? "Submitting…" : "Submit Report"}
+
+        </Text>
+
+      </Pressable>
+
+    </View>
+
+  );
+
+}
+
+
+
+import { useState } from "react";
+
+import { View, Text, TextInput, Pressable, Alert } from "react-native";
+
+import { useLocalSearchParams, router } from "expo-router";
+
+import { auth, db } from "../src/firebase";
+
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+
+
+
+export default function Report() {
+
+  const user = auth.currentUser;
+
+  const { jobId, reportedUserId } = useLocalSearchParams<{ jobId?: string; reportedUserId?: string }>();
+
+
+
+  const [reason, setReason] = useState("Safety / fraud / harassment");
+
+  const [details, setDetails] = useState("");
+
+  const [saving, setSaving] = useState(false);
+
+
+
+  async function submit() {
+
+    if (!user) return;
+
+    if (!reportedUserId) return Alert.alert("Missing", "No user to report.");
+
+
+
+    setSaving(true);
+
+    try {
+
+      await addDoc(collection(db, "reports"), {
+
+        reporterId: user.uid,
+
+        reportedUserId: String(reportedUserId),
+
+        jobId: jobId ? String(jobId) : null,
+
+        reason: reason.trim(),
+
+        details: details.trim(),
+
+        status: "open",
+
+        createdAt: serverTimestamp(),
+
+      });
+
+
+
+      Alert.alert("Submitted", "Thanks. Our team will review this report.");
+
+      router.back();
+
+    } catch (e: any) {
+
+      Alert.alert("Error", e?.message ?? "Could not submit report");
+
+    } finally {
+
+      setSaving(false);
+
+    }
+
+  }
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 16, gap: 10 }}>
+
+      <Text style={{ fontSize: 20, fontWeight: "800" }}>Report</Text>
+
+
+
+      <Text style={{ fontWeight: "800" }}>Reason</Text>
+
+      <TextInput value={reason} onChangeText={setReason} style={{ borderWidth: 1, padding: 12, borderRadius: 10 }} />
+
+
+
+      <Text style={{ fontWeight: "800" }}>Details</Text>
+
+      <TextInput
+
+        value={details}
+
+        onChangeText={setDetails}
+
+        multiline
+
+        style={{ borderWidth: 1, padding: 12, borderRadius: 10, minHeight: 100 }}
+
+        placeholder="Describe what happened…"
+
+      />
+
+
+
+      <Pressable
+
+        disabled={saving}
+
+        onPress={submit}
+
+        style={{ backgroundColor: "black", padding: 14, borderRadius: 12, opacity: saving ? 0.6 : 1 }}
+
+      >
+
+        <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+
+          {saving ? "Submitting…" : "Submit Report"}
+
+        </Text>
+
+      </Pressable>
+
+    </View>
+
+  );
+
+}
+
+
+
+import { useState } from "react";
+
+import { View, Text, Pressable, Alert } from "react-native";
+
+import { useLocalSearchParams, router } from "expo-router";
+
+import { auth, db } from "../src/firebase";
+
+import { arrayUnion, doc, updateDoc } from "firebase/firestore";
+
+
+
+export default function Block() {
+
+  const user = auth.currentUser;
+
+  const { targetUid } = useLocalSearchParams<{ targetUid?: string }>();
+
+  const [saving, setSaving] = useState(false);
+
+
+
+  async function block() {
+
+    if (!user) return;
+
+    if (!targetUid) return Alert.alert("Missing", "No user to block.");
+
+
+
+    setSaving(true);
+
+    try {
+
+      await updateDoc(doc(db, "users", user.uid), {
+
+        blockedUsers: arrayUnion(String(targetUid)),
+
+      });
+
+      Alert.alert("Blocked", "You will no longer see or interact with this user.");
+
+      router.back();
+
+    } catch (e: any) {
+
+      Alert.alert("Error", e?.message ?? "Could not block user");
+
+    } finally {
+
+      setSaving(false);
+
+    }
+
+  }
+
+
+
+  return (
+
+    <View style={{ flex: 1, padding: 16, gap: 10 }}>
+
+      <Text style={{ fontSize: 20, fontWeight: "800" }}>Block User</Text>
+
+      <Text>This will hide their jobs/messages and prevent future interactions.</Text>
+
+
+
+      <Pressable
+
+        disabled={saving}
+
+        onPress={block}
+
+        style={{ backgroundColor: "black", padding: 14, borderRadius: 12, opacity: saving ? 0.6 : 1 }}
+
+      >
+
+        <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+
+          {saving ? "Blocking…" : "Confirm Block"}
+
+        </Text>
+
+      </Pressable>
+
+    </View>
+
+  );
+
+}
+
+
+
+BUNDLE 4 — FIREBASE FUNCTIONS (Stripe Connect + License Gate) + RULES + INDEXES
+
+
+
+A) Functions folder structure
+
+
+
+At repo root (same level as workova-mobile), create:
+
+
+
+functions/
+
+  package.json
+
+  tsconfig.json
+
+  src/index.ts
+
+
+
+✅ functions/package.json
+
+
+
+{
+
+  "name": "workova-functions",
+
+  "private": true,
+
+  "main": "lib/index.js",
+
+  "engines": { "node": "18" },
+
+  "scripts": {
+
+    "build": "tsc -p tsconfig.json",
+
+    "serve": "firebase emulators:start --only functions",
+
+    "deploy": "firebase deploy --only functions"
+
+  },
+
+  "dependencies": {
+
+    "firebase-admin": "^12.3.1",
+
+    "firebase-functions": "^6.0.1",
+
+    "stripe": "^16.2.0",
+
+    "express": "^4.19.2",
+
+    "cors": "^2.8.5"
+
+  },
+
+  "devDependencies": {
+
+    "typescript": "^5.5.4"
+
+  }
+
+}
+
+
+
+✅ functions/tsconfig.json
+
+
+
+{
+
+  "compilerOptions": {
+
+    "target": "ES2021",
+
+    "module": "CommonJS",
+
+    "outDir": "lib",
+
+    "rootDir": "src",
+
+    "strict": true,
+
+    "esModuleInterop": true,
+
+    "skipLibCheck": true
+
+  },
+
+  "include": ["src"]
+
+}
+
+
+
+✅ Set env vars (Functions)
+
+
+
+You MUST set these in your Firebase environment (or .env for local emulators):
+
+• STRIPE_SECRET_KEY
+
+• STRIPE_WEBHOOK_SECRET (for webhook endpoint)
+
+• APP_FEE_BPS (e.g., 800 = 8% platform fee)
+
+
+
+✅ functions/src/index.ts
+
+
+
+This includes:
+
+• assertCanOffer callable (license legality gate)
+
+• createConnectAccount callable (creates Stripe connected account for worker)
+
+• createAccountLink callable (returns onboarding link)
+
+• createPaymentIntent callable (destination charge to worker, app fee to platform)
+
+• stripeWebhook http endpoint to confirm payment
+
+• Offer create trigger to hard-stop illegal offers server-side
+
+
+
+import * as functions from "firebase-functions";
+
+import * as admin from "firebase-admin";
+
+import Stripe from "stripe";
+
+import express from "express";
+
+
+
+admin.initializeApp();
+
+const db = admin.firestore();
+
+
+
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
+
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
+
+const APP_FEE_BPS = Number(process.env.APP_FEE_BPS || "800");
+
+
+
+if (!STRIPE_SECRET_KEY) {
+
+  console.warn("Missing STRIPE_SECRET_KEY");
+
+}
+
+const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+
+
+
+function requireAuth(context: functions.https.CallableContext) {
+
+  if (!context.auth?.uid) throw new functions.https.HttpsError("unauthenticated", "Sign in required.");
+
+  return context.auth.uid;
+
+}
+
+
+
+async function isLicenseRequired(regionId: string, categoryId: string): Promise<boolean> {
+
+  const regionSnap = await db.doc(`regions/${regionId}`).get();
+
+  if (!regionSnap.exists) return false;
+
+  const rules = (regionSnap.data() as any)?.licenseRules || {};
+
+  return Boolean(rules[categoryId]);
+
+}
+
+
+
+function workerHasApprovedLicense(worker: any, regionId: string, categoryId: string): boolean {
+
+  const licenses = worker?.licenses || [];
+
+  return licenses.some(
+
+    (l: any) => l?.regionId === regionId && l?.categoryId === categoryId && l?.status === "approved"
+
+  );
+
+}
+
+
+
+/**
+
+ * Callable: assertCanOffer({jobId})
+
+ * Enforces legal category license rules.
+
+ */
+
+export const assertCanOffer = functions.https.onCall(async (data, context) => {
+
+  const uid = requireAuth(context);
+
+  const jobId = String(data?.jobId || "");
+
+  if (!jobId) throw new functions.https.HttpsError("invalid-argument", "jobId required.");
+
+
+
+  const jobSnap = await db.doc(`jobs/${jobId}`).get();
+
+  if (!jobSnap.exists) throw new functions.https.HttpsError("not-found", "Job not found.");
+
+
+
+  const job = jobSnap.data() as any;
+
+  if (job.customerId === uid) {
+
+    return { ok: false, reason: "You cannot offer on your own job." };
+
+  }
+
+  if (job.status !== "open" && job.status !== "offered") {
+
+    return { ok: false, reason: "Job is not open." };
+
+  }
+
+
+
+  const workerSnap = await db.doc(`workers/${uid}`).get();
+
+  if (!workerSnap.exists) return { ok: false, reason: "Worker profile required." };
+
+  const worker = workerSnap.data() as any;
+
+
+
+  const required = await isLicenseRequired(job.regionId, job.categoryId);
+
+  if (required && !workerHasApprovedLicense(worker, job.regionId, job.categoryId)) {
+
+    return { ok: false, reason: "License required in this region for this category." };
+
+  }
+
+
+
+  // Optionally enforce worker categories match:
+
+  const cats = worker?.categories || [];
+
+  if (!cats.includes(job.categoryId)) {
+
+    return { ok: false, reason: "Your profile does not offer this category." };
+
+  }
+
+
+
+  return { ok: true };
+
+});
+
+
+
+/**
+
+ * Callable: createConnectAccount()
+
+ * Creates a Stripe Connect Express account for the worker and stores stripeAccountId.
+
+ */
+
+export const createConnectAccount = functions.https.onCall(async (data, context) => {
+
+  const uid = requireAuth(context);
+
+
+
+  const workerRef = db.doc(`workers/${uid}`);
+
+  const workerSnap = await workerRef.get();
+
+  if (!workerSnap.exists) throw new functions.https.HttpsError("failed-precondition", "Worker profile required.");
+
+
+
+  const worker = workerSnap.data() as any;
+
+  if (worker.stripeAccountId) {
+
+    return { ok: true, stripeAccountId: worker.stripeAccountId };
+
+  }
+
+
+
+  const account = await stripe.accounts.create({
+
+    type: "express",
+
+    capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+
+    metadata: { uid }
+
+  });
+
+
+
+  await workerRef.set({ stripeAccountId: account.id }, { merge: true });
+
+  return { ok: true, stripeAccountId: account.id };
+
+});
+
+
+
+/**
+
+ * Callable: createAccountLink({refreshUrl, returnUrl})
+
+ * Returns an onboarding link for the worker.
+
+ */
+
+export const createAccountLink = functions.https.onCall(async (data, context) => {
+
+  const uid = requireAuth(context);
+
+
+
+  const workerSnap = await db.doc(`workers/${uid}`).get();
+
+  if (!workerSnap.exists) throw new functions.https.HttpsError("failed-precondition", "Worker profile required.");
+
+
+
+  const worker = workerSnap.data() as any;
+
+  const stripeAccountId = worker?.stripeAccountId;
+
+  if (!stripeAccountId) throw new functions.https.HttpsError("failed-precondition", "Connect account not created.");
+
+
+
+  const refreshUrl = String(data?.refreshUrl || "");
+
+  const returnUrl = String(data?.returnUrl || "");
+
+  if (!refreshUrl || !returnUrl) {
+
+    throw new functions.https.HttpsError("invalid-argument", "refreshUrl and returnUrl required.");
+
+  }
+
+
+
+  const link = await stripe.accountLinks.create({
+
+    account: stripeAccountId,
+
+    refresh_url: refreshUrl,
+
+    return_url: returnUrl,
+
+    type: "account_onboarding",
+
+  });
+
+
+
+  return { ok: true, url: link.url };
+
+});
+
+
+
+/**
+
+ * Callable: createPaymentIntent({jobId, offerId})
+
+ * Destination charge:
+
+ * - customer pays
+
+ * - platform takes application fee
+
+ * - remainder transfers to worker connected account
+
+ */
+
+export const createPaymentIntent = functions.https.onCall(async (data, context) => {
+
+  const uid = requireAuth(context);
+
+
+
+  const jobId = String(data?.jobId || "");
+
+  const offerId = String(data?.offerId || "");
+
+  if (!jobId || !offerId) throw new functions.https.HttpsError("invalid-argument", "jobId and offerId required.");
+
+
+
+  const jobSnap = await db.doc(`jobs/${jobId}`).get();
+
+  if (!jobSnap.exists) throw new functions.https.HttpsError("not-found", "Job not found.");
+
+  const job = jobSnap.data() as any;
+
+
+
+  if (job.customerId !== uid) throw new functions.https.HttpsError("permission-denied", "Only customer can pay.");
+
+  if (job.status !== "booked") throw new functions.https.HttpsError("failed-precondition", "Job must be booked.");
+
+
+
+  const offerSnap = await db.doc(`offers/${offerId}`).get();
+
+  if (!offerSnap.exists) throw new functions.https.HttpsError("not-found", "Offer not found.");
+
+  const offer = offerSnap.data() as any;
+
+
+
+  if (offer.status !== "accepted") throw new functions.https.HttpsError("failed-precondition", "Offer must be accepted.");
+
+  if (offer.jobId !== jobId) throw new functions.https.HttpsError("invalid-argument", "Offer/job mismatch.");
+
+
+
+  const workerId = offer.workerId;
+
+  const workerSnap = await db.doc(`workers/${workerId}`).get();
+
+  if (!workerSnap.exists) throw new functions.https.HttpsError("failed-precondition", "Worker not found.");
+
+  const worker = workerSnap.data() as any;
+
+
+
+  const stripeAccountId = worker?.stripeAccountId;
+
+  if (!stripeAccountId) throw new functions.https.HttpsError("failed-precondition", "Worker is not onboarded for payouts.");
+
+
+
+  const amountCents = Math.round(Number(offer.price) * 100);
+
+  if (!Number.isFinite(amountCents) || amountCents <= 0) {
+
+    throw new functions.https.HttpsError("invalid-argument", "Invalid offer price.");
+
+  }
+
+
+
+  const feeCents = Math.round((amountCents * APP_FEE_BPS) / 10000);
+
+
+
+  const paymentIntent = await stripe.paymentIntents.create({
+
+    amount: amountCents,
+
+    currency: "usd",
+
+    automatic_payment_methods: { enabled: true },
+
+    metadata: { jobId, offerId, customerId: uid, workerId },
+
+    application_fee_amount: feeCents,
+
+    transfer_data: { destination: stripeAccountId },
+
+  });
+
+
+
+  // store payment stub
+
+  await db.collection("payments").add({
+
+    jobId,
+
+    offerId,
+
+    customerId: uid,
+
+    workerId,
+
+    amountCents,
+
+    feeCents,
+
+    currency: "usd",
+
+    status: "requires_payment",
+
+    stripePaymentIntentId: paymentIntent.id,
+
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+
+  });
+
+
+
+  // also store on job
+
+  await db.doc(`jobs/${jobId}`).set(
+
+    { paymentIntentId: paymentIntent.id, paymentStatus: "requires_payment" },
+
+    { merge: true }
+
+  );
+
+
+
+  return { ok: true, clientSecret: paymentIntent.client_secret };
+
+});
+
+
+
+/**
+
+ * Stripe webhook to confirm payment.
+
+ * Deploy as HTTPS endpoint and configure in Stripe dashboard.
+
+ */
+
+const app = express();
+
+
+
+// Stripe requires raw body for signature verification:
+
+app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+
+  try {
+
+    const sig = req.headers["stripe-signature"];
+
+    if (!sig || typeof sig !== "string") return res.status(400).send("Missing signature");
+
+
+
+    const event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+
+
+
+    if (event.type === "payment_intent.succeeded") {
+
+      const pi = event.data.object as Stripe.PaymentIntent;
+
+      const jobId = String(pi.metadata?.jobId || "");
+
+      const offerId = String(pi.metadata?.offerId || "");
+
+
+
+      if (jobId) {
+
+        await db.doc(`jobs/${jobId}`).set(
+
+          { paymentStatus: "paid", paidAt: admin.firestore.FieldValue.serverTimestamp() },
+
+          { merge: true }
+
+        );
+
+      }
+
+
+
+      // update payments collection rows matching paymentIntentId
+
+      const paySnap = await db.collection("payments")
+
+        .where("stripePaymentIntentId", "==", pi.id)
+
+        .limit(10)
+
+        .get();
+
+
+
+      const batch = db.batch();
+
+      paySnap.forEach((d) => batch.update(d.ref, { status: "paid", updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+
+      await batch.commit();
+
+    }
+
+
+
+    res.json({ received: true });
+
+  } catch (err: any) {
+
+    console.error(err);
+
+    res.status(400).send(`Webhook Error: ${err.message}`);
+
+  }
+
+});
+
+
+
+export const stripeWebhook = functions.https.onRequest(app);
+
+
+
+/**
+
+ * Offer create trigger: if illegal (license required but not approved) mark invalid.
+
+ * (Safer than delete; deletion requires careful client UX.)
+
+ */
+
+export const onOfferCreate = functions.firestore.document("offers/{offerId}").onCreate(async (snap, ctx) => {
+
+  const offer = snap.data() as any;
+
+  const offerId = ctx.params.offerId;
+
+
+
+  const jobSnap = await db.doc(`jobs/${offer.jobId}`).get();
+
+  if (!jobSnap.exists) return;
+
+
+
+  const job = jobSnap.data() as any;
+
+  const required = await isLicenseRequired(job.regionId, job.categoryId);
+
+
+
+  if (!required) return;
+
+
+
+  const workerSnap = await db.doc(`workers/${offer.workerId}`).get();
+
+  if (!workerSnap.exists) {
+
+    await snap.ref.set({ status: "withdrawn", invalidReason: "worker_missing" }, { merge: true });
+
+    return;
+
+  }
+
+
+
+  const worker = workerSnap.data() as any;
+
+  const ok = workerHasApprovedLicense(worker, job.regionId, job.categoryId);
+
+
+
+  if (!ok) {
+
+    await snap.ref.set(
+
+      { status: "withdrawn", invalidReason: "license_required_not_approved", invalidatedAt: admin.firestore.FieldValue.serverTimestamp() },
+
+      { merge: true }
+
+    );
+
+
+
+    // optional: log report for admin review
+
+    await db.collection("reports").add({
+
+      reporterId: "system",
+
+      reportedUserId: offer.workerId,
+
+      jobId: offer.jobId,
+
+      reason: "Illegal offer attempt",
+
+      details: `Offer ${offerId} invalidated (license required not approved).`,
+
+      status: "open",
+
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+
+    });
+
+  }
+
+});
+
+
+
+
+
+✅ Set env vars (Functions)
+
+
+
+You MUST set these in your Firebase environment (or .env for local emulators):
+
+• STRIPE_SECRET_KEY
+
+• STRIPE_WEBHOOK_SECRET (for webhook endpoint)
+
+• APP_FEE_BPS (e.g., 800 = 8% platform fee)
+
+
+
+✅ functions/src/index.ts
+
+
+
+This includes:
+
+• assertCanOffer callable (license legality gate)
+
+• createConnectAccount callable (creates Stripe connected account for worker)
+
+• createAccountLink callable (returns onboarding link)
+
+• createPaymentIntent callable (destination charge to worker, app fee to platform)
+
+• stripeWebhook http endpoint to confirm payment
+
+• Offer create trigger to hard-stop illegal offers server-side
+
+
+
+import * as functions from "firebase-functions";
+
+import * as admin from "firebase-admin";
+
+import Stripe from "stripe";
+
+import express from "express";
+
+
+
+admin.initializeApp();
+
+const db = admin.firestore();
+
+
+
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY || "";
+
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || "";
+
+const APP_FEE_BPS = Number(process.env.APP_FEE_BPS || "800");
+
+
+
+if (!STRIPE_SECRET_KEY) {
+
+  console.warn("Missing STRIPE_SECRET_KEY");
+
+}
+
+const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2024-06-20" });
+
+
+
+function requireAuth(context: functions.https.CallableContext) {
+
+  if (!context.auth?.uid) throw new functions.https.HttpsError("unauthenticated", "Sign in required.");
+
+  return context.auth.uid;
+
+}
+
+
+
+async function isLicenseRequired(regionId: string, categoryId: string): Promise<boolean> {
+
+  const regionSnap = await db.doc(`regions/${regionId}`).get();
+
+  if (!regionSnap.exists) return false;
+
+  const rules = (regionSnap.data() as any)?.licenseRules || {};
+
+  return Boolean(rules[categoryId]);
+
+}
+
+
+
+function workerHasApprovedLicense(worker: any, regionId: string, categoryId: string): boolean {
+
+  const licenses = worker?.licenses || [];
+
+  return licenses.some(
+
+    (l: any) => l?.regionId === regionId && l?.categoryId === categoryId && l?.status === "approved"
+
+  );
+
+}
+
+
+
+/**
+
+ * Callable: assertCanOffer({jobId})
+
+ * Enforces legal category license rules.
+
+ */
+
+export const assertCanOffer = functions.https.onCall(async (data, context) => {
+
+  const uid = requireAuth(context);
+
+  const jobId = String(data?.jobId || "");
+
+  if (!jobId) throw new functions.https.HttpsError("invalid-argument", "jobId required.");
+
+
+
+  const jobSnap = await db.doc(`jobs/${jobId}`).get();
+
+  if (!jobSnap.exists) throw new functions.https.HttpsError("not-found", "Job not found.");
+
+
+
+  const job = jobSnap.data() as any;
+
+  if (job.customerId === uid) {
+
+    return { ok: false, reason: "You cannot offer on your own job." };
+
+  }
+
+  if (job.status !== "open" && job.status !== "offered") {
+
+    return { ok: false, reason: "Job is not open." };
+
+  }
+
+
+
+  const workerSnap = await db.doc(`workers/${uid}`).get();
+
+  if (!workerSnap.exists) return { ok: false, reason: "Worker profile required." };
+
+  const worker = workerSnap.data() as any;
+
+
+
+  const required = await isLicenseRequired(job.regionId, job.categoryId);
+
+  if (required && !workerHasApprovedLicense(worker, job.regionId, job.categoryId)) {
+
+    return { ok: false, reason: "License required in this region for this category." };
+
+  }
+
+
+
+  // Optionally enforce worker categories match:
+
+  const cats = worker?.categories || [];
+
+  if (!cats.includes(job.categoryId)) {
+
+    return { ok: false, reason: "Your profile does not offer this category." };
+
+  }
+
+
+
+  return { ok: true };
+
+});
+
+
+
+/**
+
+ * Callable: createConnectAccount()
+
+ * Creates a Stripe Connect Express account for the worker and stores stripeAccountId.
+
+ */
+
+export const createConnectAccount = functions.https.onCall(async (data, context) => {
+
+  const uid = requireAuth(context);
+
+
+
+  const workerRef = db.doc(`workers/${uid}`);
+
+  const workerSnap = await workerRef.get();
+
+  if (!workerSnap.exists) throw new functions.https.HttpsError("failed-precondition", "Worker profile required.");
+
+
+
+  const worker = workerSnap.data() as any;
+
+  if (worker.stripeAccountId) {
+
+    return { ok: true, stripeAccountId: worker.stripeAccountId };
+
+  }
+
+
+
+  const account = await stripe.accounts.create({
+
+    type: "express",
+
+    capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+
+    metadata: { uid }
+
+  });
+
+
+
+  await workerRef.set({ stripeAccountId: account.id }, { merge: true });
+
+  return { ok: true, stripeAccountId: account.id };
+
+});
+
+
+
+/**
+
+ * Callable: createAccountLink({refreshUrl, returnUrl})
+
+ * Returns an onboarding link for the worker.
+
+ */
+
+export const createAccountLink = functions.https.onCall(async (data, context) => {
+
+  const uid = requireAuth(context);
+
+
+
+  const workerSnap = await db.doc(`workers/${uid}`).get();
+
+  if (!workerSnap.exists) throw new functions.https.HttpsError("failed-precondition", "Worker profile required.");
+
+
+
+  const worker = workerSnap.data() as any;
+
+  const stripeAccountId = worker?.stripeAccountId;
+
+  if (!stripeAccountId) throw new functions.https.HttpsError("failed-precondition", "Connect account not created.");
+
+
+
+  const refreshUrl = String(data?.refreshUrl || "");
+
+  const returnUrl = String(data?.returnUrl || "");
+
+  if (!refreshUrl || !returnUrl) {
+
+    throw new functions.https.HttpsError("invalid-argument", "refreshUrl and returnUrl required.");
+
+  }
+
+
+
+  const link = await stripe.accountLinks.create({
+
+    account: stripeAccountId,
+
+    refresh_url: refreshUrl,
+
+    return_url: returnUrl,
+
+    type: "account_onboarding",
+
+  });
+
+
+
+  return { ok: true, url: link.url };
+
+});
+
+
+
+/**
+
+ * Callable: createPaymentIntent({jobId, offerId})
+
+ * Destination charge:
+
+ * - customer pays
+
+ * - platform takes application fee
+
+ * - remainder transfers to worker connected account
+
+ */
+
+export const createPaymentIntent = functions.https.onCall(async (data, context) => {
+
+  const uid = requireAuth(context);
+
+
+
+  const jobId = String(data?.jobId || "");
+
+  const offerId = String(data?.offerId || "");
+
+  if (!jobId || !offerId) throw new functions.https.HttpsError("invalid-argument", "jobId and offerId required.");
+
+
+
+  const jobSnap = await db.doc(`jobs/${jobId}`).get();
+
+  if (!jobSnap.exists) throw new functions.https.HttpsError("not-found", "Job not found.");
+
+  const job = jobSnap.data() as any;
+
+
+
+  if (job.customerId !== uid) throw new functions.https.HttpsError("permission-denied", "Only customer can pay.");
+
+  if (job.status !== "booked") throw new functions.https.HttpsError("failed-precondition", "Job must be booked.");
+
+
+
+  const offerSnap = await db.doc(`offers/${offerId}`).get();
+
+  if (!offerSnap.exists) throw new functions.https.HttpsError("not-found", "Offer not found.");
+
+  const offer = offerSnap.data() as any;
+
+
+
+  if (offer.status !== "accepted") throw new functions.https.HttpsError("failed-precondition", "Offer must be accepted.");
+
+  if (offer.jobId !== jobId) throw new functions.https.HttpsError("invalid-argument", "Offer/job mismatch.");
+
+
+
+  const workerId = offer.workerId;
+
+  const workerSnap = await db.doc(`workers/${workerId}`).get();
+
+  if (!workerSnap.exists) throw new functions.https.HttpsError("failed-precondition", "Worker not found.");
+
+  const worker = workerSnap.data() as any;
+
+
+
+  const stripeAccountId = worker?.stripeAccountId;
+
+  if (!stripeAccountId) throw new functions.https.HttpsError("failed-precondition", "Worker is not onboarded for payouts.");
+
+
+
+  const amountCents = Math.round(Number(offer.price) * 100);
+
+  if (!Number.isFinite(amountCents) || amountCents <= 0) {
+
+    throw new functions.https.HttpsError("invalid-argument", "Invalid offer price.");
+
+  }
+
+
+
+  const feeCents = Math.round((amountCents * APP_FEE_BPS) / 10000);
+
+
+
+  const paymentIntent = await stripe.paymentIntents.create({
+
+    amount: amountCents,
+
+    currency: "usd",
+
+    automatic_payment_methods: { enabled: true },
+
+    metadata: { jobId, offerId, customerId: uid, workerId },
+
+    application_fee_amount: feeCents,
+
+    transfer_data: { destination: stripeAccountId },
+
+  });
+
+
+
+  // store payment stub
+
+  await db.collection("payments").add({
+
+    jobId,
+
+    offerId,
+
+    customerId: uid,
+
+    workerId,
+
+    amountCents,
+
+    feeCents,
+
+    currency: "usd",
+
+    status: "requires_payment",
+
+    stripePaymentIntentId: paymentIntent.id,
+
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+
+  });
+
+
+
+  // also store on job
+
+  await db.doc(`jobs/${jobId}`).set(
+
+    { paymentIntentId: paymentIntent.id, paymentStatus: "requires_payment" },
+
+    { merge: true }
+
+  );
+
+
+
+  return { ok: true, clientSecret: paymentIntent.client_secret };
+
+});
+
+
+
+/**
+
+ * Stripe webhook to confirm payment.
+
+ * Deploy as HTTPS endpoint and configure in Stripe dashboard.
+
+ */
+
+const app = express();
+
+
+
+// Stripe requires raw body for signature verification:
+
+app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+
+  try {
+
+    const sig = req.headers["stripe-signature"];
+
+    if (!sig || typeof sig !== "string") return res.status(400).send("Missing signature");
+
+
+
+    const event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+
+
+
+    if (event.type === "payment_intent.succeeded") {
+
+      const pi = event.data.object as Stripe.PaymentIntent;
+
+      const jobId = String(pi.metadata?.jobId || "");
+
+      const offerId = String(pi.metadata?.offerId || "");
+
+
+
+      if (jobId) {
+
+        await db.doc(`jobs/${jobId}`).set(
+
+          { paymentStatus: "paid", paidAt: admin.firestore.FieldValue.serverTimestamp() },
+
+          { merge: true }
+
+        );
+
+      }
+
+
+
+      // update payments collection rows matching paymentIntentId
+
+      const paySnap = await db.collection("payments")
+
+        .where("stripePaymentIntentId", "==", pi.id)
+
+        .limit(10)
+
+        .get();
+
+
+
+      const batch = db.batch();
+
+      paySnap.forEach((d) => batch.update(d.ref, { status: "paid", updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+
+      await batch.commit();
+
+    }
+
+
+
+    res.json({ received: true });
+
+  } catch (err: any) {
+
+    console.error(err);
+
+    res.status(400).send(`Webhook Error: ${err.message}`);
+
+  }
+
+});
+
+
+
+export const stripeWebhook = functions.https.onRequest(app);
+
+
+
+/**
+
+ * Offer create trigger: if illegal (license required but not approved) mark invalid.
+
+ * (Safer than delete; deletion requires careful client UX.)
+
+ */
+
+export const onOfferCreate = functions.firestore.document("offers/{offerId}").onCreate(async (snap, ctx) => {
+
+  const offer = snap.data() as any;
+
+  const offerId = ctx.params.offerId;
+
+
+
+  const jobSnap = await db.doc(`jobs/${offer.jobId}`).get();
+
+  if (!jobSnap.exists) return;
+
+
+
+  const job = jobSnap.data() as any;
+
+  const required = await isLicenseRequired(job.regionId, job.categoryId);
+
+
+
+  if (!required) return;
+
+
+
+  const workerSnap = await db.doc(`workers/${offer.workerId}`).get();
+
+  if (!workerSnap.exists) {
+
+    await snap.ref.set({ status: "withdrawn", invalidReason: "worker_missing" }, { merge: true });
+
+    return;
+
+  }
+
+
+
+  const worker = workerSnap.data() as any;
+
+  const ok = workerHasApprovedLicense(worker, job.regionId, job.categoryId);
+
+
+
+  if (!ok) {
+
+    await snap.ref.set(
+
+      { status: "withdrawn", invalidReason: "license_required_not_approved", invalidatedAt: admin.firestore.FieldValue.serverTimestamp() },
+
+      { merge: true }
+
+    );
+
+
+
+    // optional: log report for admin review
+
+    await db.collection("reports").add({
+
+      reporterId: "system",
+
+      reportedUserId: offer.workerId,
+
+      jobId: offer.jobId,
+
+      reason: "Illegal offer attempt",
+
+      details: `Offer ${offerId} invalidated (license required not approved).`,
+
+      status: "open",
+
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+
+    });
+
+  }
+
+});
+
+
+
+
+
+B) Firestore Security Rules (tight baseline)
+
+
+
+Replace your Firestore rules with this safer version:
+
+
+
+rules_version = '2';
+
+service cloud.firestore {
+
+  match /databases/{database}/documents {
+
+
+
+    function signedIn() { return request.auth != null; }
+
+    function uid() { return request.auth.uid; }
+
+    function isAdmin() {
+
+      return signedIn() &&
+
+        get(/databases/$(database)/documents/users/$(uid())).data.role == "admin";
+
+    }
+
+
+
+    match /users/{userId} {
+
+      allow read: if signedIn();
+
+      allow create: if signedIn() && uid() == userId;
+
+      allow update: if signedIn() && uid() == userId;
+
+      allow delete: if isAdmin();
+
+    }
+
+
+
+    match /workers/{workerId} {
+
+      allow read: if true;
+
+      allow create, update: if signedIn() && uid() == workerId;
+
+      allow delete: if isAdmin();
+
+    }
+
+
+
+    match /jobs/{jobId} {
+
+      allow read: if signedIn();
+
+      allow create: if signedIn() && request.resource.data.customerId == uid();
+
+
+
+      // Customer can update their job; booked worker can update limited fields later (not implemented here)
+
+      allow update: if signedIn() && (
+
+        resource.data.customerId == uid() ||
+
+        isAdmin()
+
+      );
+
+
+
+      allow delete: if isAdmin();
+
+    }
+
+
+
+    match /offers/{offerId} {
+
+      allow read: if signedIn();
+
+
+
+      allow create: if signedIn()
+
+        && request.resource.data.workerId == uid()
+
+        && request.resource.data.status == "sent";
+
+
+
+      allow update: if signedIn() && (
+
+        resource.data.workerId == uid() ||
+
+        resource.data.customerId == uid() ||
+
+        isAdmin()
+
+      );
+
+
+
+      allow delete: if isAdmin();
+
+    }
+
+
+
+    match /chats/{chatId} {
+
+      allow read: if signedIn() && uid() in resource.data.members;
+
+      allow create: if signedIn() && uid() in request.resource.data.members;
+
+      allow update: if signedIn() && uid() in resource.data.members;
+
+
+
+      match /messages/{messageId} {
+
+        allow read: if signedIn() && uid() in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+
+        allow create: if signedIn()
+
+          && uid() == request.resource.data.senderId
+
+          && uid() in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+
+        allow update, delete: if false;
+
+      }
+
+    }
+
+
+
+    match /reports/{reportId} {
+
+      allow create: if signedIn();
+
+      allow read, update, delete: if isAdmin();
+
+    }
+
+
+
+    match /regions/{regionId} {
+
+      allow read: if true;
+
+      allow write: if isAdmin();
+
+    }
+
+
+
+    match /categories/{categoryId} {
+
+      allow read: if true;
+
+      allow write: if isAdmin();
+
+    }
+
+
+
+    match /payments/{paymentId} {
+
+      allow read: if signedIn() && (
+
+        resource.data.customerId == uid() ||
+
+        resource.data.workerId == uid() ||
+
+        isAdmin()
+
+      );
+
+      allow write: if isAdmin(); // payments written by server; keep locked down
+
+    }
+
+  }
+
+}
+
+
+
+rules_version = '2';
+
+service cloud.firestore {
+
+  match /databases/{database}/documents {
+
+
+
+    function signedIn() { return request.auth != null; }
+
+    function uid() { return request.auth.uid; }
+
+    function isAdmin() {
+
+      return signedIn() &&
+
+        get(/databases/$(database)/documents/users/$(uid())).data.role == "admin";
+
+    }
+
+
+
+    match /users/{userId} {
+
+      allow read: if signedIn();
+
+      allow create: if signedIn() && uid() == userId;
+
+      allow update: if signedIn() && uid() == userId;
+
+      allow delete: if isAdmin();
+
+    }
+
+
+
+    match /workers/{workerId} {
+
+      allow read: if true;
+
+      allow create, update: if signedIn() && uid() == workerId;
+
+      allow delete: if isAdmin();
+
+    }
+
+
+
+    match /jobs/{jobId} {
+
+      allow read: if signedIn();
+
+      allow create: if signedIn() && request.resource.data.customerId == uid();
+
+
+
+      // Customer can update their job; booked worker can update limited fields later (not implemented here)
+
+      allow update: if signedIn() && (
+
+        resource.data.customerId == uid() ||
+
+        isAdmin()
+
+      );
+
+
+
+      allow delete: if isAdmin();
+
+    }
+
+
+
+    match /offers/{offerId} {
+
+      allow read: if signedIn();
+
+
+
+      allow create: if signedIn()
+
+        && request.resource.data.workerId == uid()
+
+        && request.resource.data.status == "sent";
+
+
+
+      allow update: if signedIn() && (
+
+        resource.data.workerId == uid() ||
+
+        resource.data.customerId == uid() ||
+
+        isAdmin()
+
+      );
+
+
+
+      allow delete: if isAdmin();
+
+    }
+
+
+
+    match /chats/{chatId} {
+
+      allow read: if signedIn() && uid() in resource.data.members;
+
+      allow create: if signedIn() && uid() in request.resource.data.members;
+
+      allow update: if signedIn() && uid() in resource.data.members;
+
+
+
+      match /messages/{messageId} {
+
+        allow read: if signedIn() && uid() in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+
+        allow create: if signedIn()
+
+          && uid() == request.resource.data.senderId
+
+          && uid() in get(/databases/$(database)/documents/chats/$(chatId)).data.members;
+
+        allow update, delete: if false;
+
+      }
+
+    }
+
+
+
+    match /reports/{reportId} {
+
+      allow create: if signedIn();
+
+      allow read, update, delete: if isAdmin();
+
+    }
+
+
+
+    match /regions/{regionId} {
+
+      allow read: if true;
+
+      allow write: if isAdmin();
+
+    }
+
+
+
+    match /categories/{categoryId} {
+
+      allow read: if true;
+
+      allow write: if isAdmin();
+
+    }
+
+
+
+    match /payments/{paymentId} {
+
+      allow read: if signedIn() && (
+
+        resource.data.customerId == uid() ||
+
+        resource.data.workerId == uid() ||
+
+        isAdmin()
+
+      );
+
+      allow write: if isAdmin(); // payments written by server; keep locked down
+
+    }
+
+  }
+
+}
+
+
+
+
+
+C) Required Firestore Indexes (create in Firebase console when prompted)
+
+
+
+You will almost certainly be prompted for these composite indexes:
+
+1. chats
+
+
+
+• members (array-contains) + updatedAt (desc)
+
+
+
+2. offers
+
+
+
+• jobId (asc) + createdAt (desc)
+
+
+
+3. jobs (for worker feed queries)
+
+
+
+• status (asc) + location.geohash (asc)
+
+
+
+Create them when Firebase throws the index link in logs.
+
+
+
+FINAL NOTE (Stripe Connect + iOS reality)
+
+
+
+This completes a legal + safe architecture, but to actually collect card payments in-app on iOS you’ll need one additional mobile dependency:
+
+• @stripe/stripe-react-native
+
+
+
+Then you’ll use the returned clientSecret from createPaymentIntent() to present PaymentSheet.
+
+
+
+If you want, I’ll paste the PaymentSheet integration code next (it’s short and reliable) and add a “Pay Now” button on the booked job screen.
+
+
+
+1) Install Stripe React Native SDK (Expo)
+
+
+
+Run in your workova-mobile project:
+
+
+
+cd workova-mobile
+
+npx expo install @stripe/stripe-react-native
+
+
+
+2) Add Stripe publishable key to env
+
+
+
+In Replit Secrets / .env:
+
+• EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_... (or pk_test_…)
+
+
+
+3) Wrap the app with StripeProvider
+
+
+
+✅ Replace app/_layout.tsx with this
+
+
+
+import { Stack } from "expo-router";
+
+import { StripeProvider } from "@stripe/stripe-react-native";
+
+
+
+export default function RootLayout() {
+
+  const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+
+
+
+  if (!publishableKey) {
+
+    // Fail fast so you don't ship a broken payments build
+
+    return (
+
+      // Keep it ultra simple to avoid crashing in expo-router init
+
+      // You can replace with a nicer error screen later.
+
+      // eslint-disable-next-line react/jsx-no-undef
+
+      <></>
+
+    );
+
+  }
+
+
+
+  return (
+
+    <StripeProvider
+
+      publishableKey={publishableKey}
+
+      merchantIdentifier="merchant.com.workova" // required only if you later enable Apple Pay
+
+    >
+
+      <Stack screenOptions={{ headerShown: false }}>
+
+        <Stack.Screen name="(auth)" />
+
+        <Stack.Screen name="(tabs)" />
+
+        <Stack.Screen name="job/[jobId]" options={{ headerShown: true, title: "Job" }} />
+
+        <Stack.Screen name="job/[jobId]-offer" options={{ headerShown: true, title: "Offer" }} />
+
+        <Stack.Screen name="chat/[chatId]" options={{ headerShown: true, title: "Chat" }} />
+
+        <Stack.Screen name="report" options={{ headerShown: true, title: "Report" }} />
+
+        <Stack.Screen name="block" options={{ headerShown: true, title: "Block" }} />
+
+      </Stack>
+
+    </StripeProvider>
+
+  );
+
+}
+
+
+
+Add stripe helper 
+
+
+
+import { getFunctions, httpsCallable } from "firebase/functions";
+
+import { getApp } from "firebase/app";
+
+import { initPaymentSheet, presentPaymentSheet } from "@stripe/stripe-react-native";
+
+
+
+export async function payForJobWithPaymentSheet(params: {
+
+  jobId: string;
+
+  offerId: string;
+
+}) {
+
+  const functions = getFunctions(getApp());
+
+  const createPaymentIntent = httpsCallable(functions, "createPaymentIntent");
+
+
+
+  // 1) Create PI on server (Stripe Connect destination charge)
+
+  const res: any = await createPaymentIntent({
+
+    jobId: params.jobId,
+
+    offerId: params.offerId,
+
+  });
+
+
+
+  const clientSecret = res?.data?.clientSecret as string | undefined;
+
+  if (!clientSecret) {
+
+    throw new Error(res?.data?.reason ?? "Missing client secret from server.");
+
+  }
+
+
+
+  // 2) Initialize payment sheet
+
+  const init = await initPaymentSheet({
+
+    paymentIntentClientSecret: clientSecret,
+
+    merchantDisplayName: "Workova",
+
+    // Apple Pay can be enabled later:
+
+    // applePay: { merchantCountryCode: "US" },
+
+    // returnURL: "workova://stripe-redirect", // optional; Stripe generally handles this
+
+  });
+
+
+
+  if (init.error) throw new Error(init.error.message);
+
+
+
+  // 3) Present payment sheet
+
+  const presented = await presentPaymentSheet();
+
+  if (presented.error) throw new Error(presented.error.message);
+
+
+
+  return { ok: true };
+
+}
+
+
+
+5) Add “Pay Now” button on Job Detail when booked
+
+
+
+We’ll update your app/job/[jobId].tsx to:
+
+• Show “Pay Now” only if:
+
+• user is the customer
+
+• job.status === “booked”
+
+• acceptedOfferId exists
+
+• paymentStatus not equal “paid”
+
+
+
+✅ Patch app/job/[jobId].tsx (add imports + button)
+
+
+
+A) Add this import near the top:
+
+
+
+import { payForJobWithPaymentSheet } from "../../src/payments";
+
+import { updateDoc } from "firebase/firestore";
+
+
+
+import { payForJobWithPaymentSheet } from "../../src/payments";
+
+import { updateDoc } from "firebase/firestore";
+
+
+
+B) Add state for pay loading:
+
+
+
+
+
+const [paying, setPaying] = useState(false);
+
+
+
+C) Add this function inside the component:
+
+
+
+async function payNow() {
+
+  if (!user || !job) return;
+
+  if (job.customerId !== user.uid) {
+
+    Alert.alert("Not allowed", "Only the customer can pay.");
+
+    return;
+
+  }
+
+  if (job.status !== "booked") {
+
+    Alert.alert("Not ready", "Job must be booked before payment.");
+
+    return;
+
+  }
+
+  if (!job.acceptedOfferId) {
+
+    Alert.alert("Missing offer", "No accepted offer found.");
+
+    return;
+
+  }
+
+
+
+  setPaying(true);
+
+  try {
+
+    await payForJobWithPaymentSheet({
+
+      jobId: job.id,
+
+      offerId: job.acceptedOfferId,
+
+    });
+
+
+
+    // Optional immediate UX: mark processing; webhook will flip to paid
+
+    await updateDoc(doc(db, "jobs", job.id), {
+
+      paymentStatus: "processing",
+
+    });
+
+
+
+    Alert.alert("Success", "Payment completed. Confirmation may take a moment.");
+
+  } catch (e: any) {
+
+    Alert.alert("Payment error", e?.message ?? "Payment failed.");
+
+  } finally {
+
+    setPaying(false);
+
+  }
+
+}
+
+
+
+D) Add this button in the JSX (below “Open Chat” is fine):
+
+
+
+{isCustomer && job.status === "booked" && job.acceptedOfferId && job.paymentStatus !== "paid" ? (
+
+  <Pressable
+
+    onPress={payNow}
+
+    disabled={paying}
+
+    style={{
+
+      backgroundColor: "black",
+
+      padding: 14,
+
+      borderRadius: 12,
+
+      opacity: paying ? 0.6 : 1,
+
+      marginTop: 10,
+
+    }}
+
+  >
+
+    <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+
+      {paying ? "Processing…" : "Pay Now"}
+
+    </Text>
+
+  </Pressable>
+
+) : null}
+
+
+
+{isCustomer && job.paymentStatus === "paid" ? (
+
+  <View style={{ marginTop: 10, padding: 12, borderWidth: 1, borderRadius: 12 }}>
+
+    <Text style={{ fontWeight: "800" }}>Payment received ✅</Text>
+
+  </View>
+
+) : null}
+
+
+
+6) Important: Stripe webhook needs to be deployed
+
+
+
+Your PaymentSheet will succeed locally, but your job/payment status won’t update to “paid” unless:
+
+• stripeWebhook endpoint is deployed and configured in Stripe Dashboard
+
+• STRIPE_WEBHOOK_SECRET matches
+
+
+
+In Stripe Dashboard:
+
+• Add endpoint: https://<your-cloud-function-url>/stripeWebhook/webhook
+
+• Listen for: payment_intent.succeeded
+
+
+
+Your Functions code already updates:
+
+• jobs/{jobId}.paymentStatus = "paid"
+
+• matching payments docs
+
+
+
+
+
+7) iOS submission notes (so Apple doesn’t reject)
+
+
+
+This setup is compliant because:
+
+• You’re charging for real-world services (allowed via Stripe)
+
+• You’re not selling digital content outside IAP
+
+• You’re not forcing external purchase links
+
+
+
+Before submission:
+
+• Add a Privacy Policy URL in App Store Connect
+
+• Ensure your in-app text avoids “licensed” unless verified
+
+• Keep report/block visible and easy to find
+
+
+
+⸻
+
+
+
+If you want the final polish (recommended next)
+
+
+
+Say the word and I’ll paste the next code bundle:
+
+1. Worker “Stripe Connect Onboarding” button inside Worker onboarding
+
+• calls createConnectAccount then createAccountLink
+
+• opens link in browser
+
+2. A “Payout Status” section in worker account
+
+3. Prevent accepting offer unless worker has stripeAccountId (so customer can always pay)
+
+
+
+1) Mobile dependency (safe browser open)
+
+
+
+Expo already supports Linking, no install needed.
+
+
+
+⸻
+
+
+
+2) Add Connect helper
+
+
+
+✅ Create src/connect.ts
+
+
+
+import { getFunctions, httpsCallable } from "firebase/functions";
+
+import { getApp } from "firebase/app";
+
+
+
+export async function ensureConnectAccount() {
+
+  const functions = getFunctions(getApp());
+
+  const fn = httpsCallable(functions, "createConnectAccount");
+
+  const res: any = await fn({});
+
+  if (!res?.data?.ok) throw new Error(res?.data?.reason ?? "Could not create Connect account");
+
+  return res.data.stripeAccountId as string;
+
+}
+
+
+
+export async function getConnectOnboardingLink(params: { refreshUrl: string; returnUrl: string }) {
+
+  const functions = getFunctions(getApp());
+
+  const fn = httpsCallable(functions, "createAccountLink");
+
+  const res: any = await fn(params);
+
+  if (!res?.data?.ok) throw new Error(res?.data?.reason ?? "Could not create onboarding link");
+
+  return res.data.url as string;
+
+}
+
+
+
+3) Add a Worker Payout / Connect section in Worker Onboarding
+
+
+
+We’ll update app/(tabs)/worker-onboarding.tsx to include:
+
+• “Enable Payouts (Stripe)” button
+
+• Reads worker doc to show stripeAccountId
+
+• Creates account + onboarding link
+
+• Opens link
+
+
+
+✅ Patch app/(tabs)/worker-onboarding.tsx
+
+
+
+A) Add imports at top:
+
+
+
+
+
+
+
+
+
+import { Linking } from "react-native";
+
+import { ensureConnectAccount, getConnectOnboardingLink } from "../../src/connect";
+
+import { getDoc, doc } from "firebase/firestore";
+
+
+
+
+
+
+
+B) Add state near other state: 
+
+
+
+const [stripeAccountId, setStripeAccountId] = useState<string | null>(null);
+
+const [connecting, setConnecting] = useState(false);
+
+
+
+C) After saving worker profile (or inside useEffect), load stripeAccountId:
+
+
+
+Add this useEffect in the component:
+
+
+
+useEffect(() => {
+
+  (async () => {
+
+    if (!user) return;
+
+    const wSnap = await getDoc(doc(db, "workers", user.uid));
+
+    const w = wSnap.exists() ? (wSnap.data() as any) : null;
+
+    setStripeAccountId(w?.stripeAccountId ?? null);
+
+  })();
+
+}, [user]);
+
+
+
+D) Add function to start onboarding:
+
+
+
+async function startConnectOnboarding() {
+
+  if (!user) return;
+
+
+
+  setConnecting(true);
+
+  try {
+
+    // 1) Create / ensure Connect account exists
+
+    const acctId = await ensureConnectAccount();
+
+    setStripeAccountId(acctId);
+
+
+
+    // 2) Create onboarding link
+
+    // For now we use placeholder https URLs; in production, use your actual domain
+
+    // These URLs must be HTTPS and owned/controlled by you.
+
+    const url = await getConnectOnboardingLink({
+
+      refreshUrl: "https://workova.app/connect/refresh",
+
+      returnUrl: "https://workova.app/connect/return",
+
+    });
+
+
+
+    // 3) Open onboarding in browser
+
+    const ok = await Linking.canOpenURL(url);
+
+    if (!ok) throw new Error("Cannot open onboarding URL.");
+
+    await Linking.openURL(url);
+
+  } catch (e: any) {
+
+    Alert.alert("Connect Error", e?.message ?? "Could not start onboarding.");
+
+  } finally {
+
+    setConnecting(false);
+
+  }
+
+}
+
+
+
+
+
+
+
+<View style={{ marginTop: 14, padding: 12, borderWidth: 1, borderRadius: 12, gap: 8 }}>
+
+  <Text style={{ fontSize: 16, fontWeight: "800" }}>Payouts (Stripe Connect)</Text>
+
+  {stripeAccountId ? (
+
+    <>
+
+      <Text style={{ opacity: 0.8 }}>Connect account created ✅</Text>
+
+      <Text style={{ fontSize: 12, opacity: 0.6 }}>Account ID: {stripeAccountId}</Text>
+
+      <Pressable
+
+        disabled={connecting}
+
+        onPress={startConnectOnboarding}
+
+        style={{ backgroundColor: "black", padding: 12, borderRadius: 12, opacity: connecting ? 0.6 : 1 }}
+
+      >
+
+        <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+
+          {connecting ? "Opening…" : "Continue / Re-open Onboarding"}
+
+        </Text>
+
+      </Pressable>
+
+    </>
+
+  ) : (
+
+    <>
+
+      <Text style={{ opacity: 0.8 }}>
+
+        To get paid, you must enable payouts with Stripe Connect.
+
+      </Text>
+
+      <Pressable
+
+        disabled={connecting}
+
+        onPress={startConnectOnboarding}
+
+        style={{ backgroundColor: "black", padding: 12, borderRadius: 12, opacity: connecting ? 0.6 : 1 }}
+
+      >
+
+        <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+
+          {connecting ? "Starting…" : "Enable Payouts"}
+
+        </Text>
+
+      </Pressable>
+
+    </>
+
+  )}
+
+</View>
+
+
+
+4) Block accepting offers unless worker is payout-ready
+
+
+
+Customers should not be allowed to accept an offer if the worker has no stripeAccountId.
+
+We’ll enforce this client-side (and we already enforce server-side when creating PaymentIntent).
+
+
+
+✅ Patch app/job/[jobId].tsx acceptOffer()
+
+
+
+Inside acceptOffer(offer) before committing booking, add:
+
+
+
+// Ensure worker has Stripe Connect account (payout-ready)
+
+const workerSnap = await getDoc(doc(db, "workers", offer.workerId));
+
+const worker = workerSnap.exists() ? (workerSnap.data() as any) : null;
+
+if (!worker?.stripeAccountId) {
+
+  Alert.alert(
+
+    "Worker not payout-ready",
+
+    "This worker has not enabled payouts yet. Ask them to complete Stripe onboarding."
+
+  );
+
+  return;
+
+}
+
+
+
+Even though createPaymentIntent will reject if no stripeAccountId, it’s better UX to check first.
+
+
+
+In payNow() before calling PaymentSheet:
+
+
+
+const workerSnap = await getDoc(doc(db, "workers", job.bookedWorkerId));
+
+const worker = workerSnap.exists() ? (workerSnap.data() as any) : null;
+
+if (!worker?.stripeAccountId) {
+
+  Alert.alert("Not ready", "Worker payouts are not enabled yet.");
+
+  return;
+
+}
+
+
+
+
+
+6) IMPORTANT: Replace the placeholder HTTPS URLs
+
+
+
+In the onboarding link function call we used:
+
+• https://workova.app/connect/refresh
+
+• https://workova.app/connect/return
+
+
+
+These must be real HTTPS pages you own. Minimum viable:
+
+• A simple landing page that says “You can close this window and return to the app.”
+
+
+
+
+
+
+
+Worker cannot send offers until payouts enabled (prevents wasted customer time), plus a badge on worker profile:
+
+• “Payouts enabled ✅ / Not enabled ⚠️
+
+
+
+1) Client-side: block “Send Offer” unless payouts enabled
+
+
+
+✅ Patch app/job/[jobId].tsx
+
+
+
+A) Add worker payout check state
+
+
+
+Near other state in the component:
+
+
+
+const [myWorkerStripeAccountId, setMyWorkerStripeAccountId] = useState<string | null>(null);
+
+
+
+B) When you load workerDoc, also set payout id
+
+
+
+In the existing effect where you load workerDoc:
+
+
+
+const wSnap = await getDoc(doc(db, "workers", user.uid));
+
+if (wSnap.exists()) {
+
+  const w = wSnap.data() as any;
+
+  setWorkerDoc(w);
+
+  setMyWorkerStripeAccountId(w?.stripeAccountId ?? null);
+
+} else {
+
+  setWorkerDoc(null);
+
+  setMyWorkerStripeAccountId(null);
+
+}
+
+
+
+C) Update canOfferAsWorker to require payouts
+
+
+
+Replace your canOfferAsWorker with:
+
+
+
+
+
+const canOfferAsWorker =
+
+  user &&
+
+  workerDoc &&
+
+  myWorkerStripeAccountId && // ✅ require payouts enabled
+
+  job.status === "open" &&
+
+  !blocked &&
+
+  !isBlocked(blockedUsers, job.customerId) &&
+
+  job.customerId !== user.uid;
+
+
+
+D) If worker is viewing and payouts not enabled, show CTA
+
+
+
+Add this UI block where the Offer button would be (right above or below it):
+
+
+
+{user && workerDoc && !myWorkerStripeAccountId ? (
+
+  <View style={{ borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 8 }}>
+
+    <Text style={{ fontWeight: "800" }}>Enable payouts to send offers</Text>
+
+    <Text style={{ opacity: 0.8, marginTop: 4 }}>
+
+      You must complete Stripe Connect onboarding before you can offer on jobs.
+
+    </Text>
+
+    <Pressable
+
+      onPress={() => router.push("/(tabs)/worker-onboarding")}
+
+      style={{ backgroundColor: "black", padding: 12, borderRadius: 12, marginTop: 10 }}
+
+    >
+
+      <Text style={{ color: "white", textAlign: "center", fontWeight: "800" }}>
+
+        Enable Payouts
+
+      </Text>
+
+    </Pressable>
+
+  </View>
+
+) : null}
+
+
+
+2) Server-side: enforce in assertCanOffer (NO BYPASS)
+
+
+
+✅ Patch functions/src/index.ts
+
+
+
+Inside assertCanOffer, after loading the worker doc:
+
+
+
+Add:
+
+
+
+// Require payouts enabled before offering (Stripe Connect onboarded)
+
+if (!worker?.stripeAccountId) {
+
+  return { ok: false, reason: "Payouts must be enabled (Stripe Connect) before sending offers." };
+
+}
+
+
+
+Place it right after:
+
+
+
+const worker = workerSnap.data() as any;
+
+
+
+3) Firestore trigger: invalidate offers if payouts not enabled
+
+
+
+✅ Patch onOfferCreate trigger in functions/src/index.ts
+
+
+
+Inside onOfferCreate, after fetching worker:
+
+
+
+if (!worker?.stripeAccountId) {
+
+  await snap.ref.set(
+
+    {
+
+      status: "withdrawn",
+
+      invalidReason: "payouts_not_enabled",
+
+      invalidatedAt: admin.firestore.FieldValue.serverTimestamp(),
+
+    },
+
+    { merge: true }
+
+  );
+
+
+
+  await db.collection("reports").add({
+
+    reporterId: "system",
+
+    reportedUserId: offer.workerId,
+
+    jobId: offer.jobId,
+
+    reason: "Offer invalidated",
+
+    details: `Offer ${offerId} invalidated: payouts_not_enabled.`,
+
+    status: "open",
+
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+
+  });
+
+
+
+  return;
+
+}
+
+
+
+4) Optional: enforce in Firestore rules (light guard)
+
+
+
+Security rules can’t reliably read worker docs in a secure/performant way for complex checks, so do not try to enforce payouts inside rules. The correct enforcement is:
+
+
+
+✅ callable function gate + trigger invalidation (you now have both)
+
+
+
+5) UX update: worker onboarding should clearly show status
+
+
+
+In worker-onboarding.tsx, under the payout section, add:
+
+• If stripeAccountId exists: “Account created ✅ — complete onboarding”
+
+• If not: “Enable payouts required to offer”
+
+
+
+(You already have this.)
+
+
+
+
+
+Add disputes and refunds 
+
+
+
+
+
+Run it:
+
+
+
+npx expo start
